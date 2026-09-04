@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>计算器</title>
+    <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+    <script>
+        // 初始化 Python Bridge（若可用）
+        (function initQtBridge() {
+            if (window.qt && window.qt.webChannelTransport) {
+                new QWebChannel(qt.webChannelTransport, function(channel) {
+                    window.pythonBridge = channel.objects.pythonBridge;
+                    console.log('[Calc] pythonBridge ready');
+                });
+            } else {
+                console.warn('[Calc] qt webChannelTransport not available');
+            }
+        })();
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            border: none;
+            outline: none;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(to bottom, #e8e9ed 0%, #d5d7dc 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            height: 100vh;
+            width: 100vw;
+            padding: 12px;
+            overflow: hidden;
+        }
+
+        .calculator-container {
+            width: 100%;
+            max-width: 320px;
+        }
+
+        .calculator-display {
+            background: white;
+            border-radius: 16px;
+            padding: 8px 16px 8px;
+            margin-bottom: 12px;
+            box-shadow: 
+                inset 0 2px 4px rgba(0, 0, 0, 0.06),
+                0 1px 0 rgba(255, 255, 255, 0.8);
+            min-height: 80px;
+            height: auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+
+        .calculator-history {
+            font-size: 20px !important;
+            color: #999;
+            text-align: right;
+            min-height: 20px;
+            height: auto;
+            margin-bottom: 4px;
+            line-height: 1.2;
+            font-weight: 500;
+        }
+
+        .calculator-expression {
+            font-size: 32px;
+            font-weight: 300;
+            text-align: right;
+            color: #333;
+            word-break: break-all;
+            line-height: 1.0;
+            padding-top: 0px;
+        }
+
+        .calculator-expression.long-expression {
+            font-size: 24px;
+        }
+
+        .calculator-expression.very-long-expression {
+            font-size: 20px;
+        }
+
+        .calculator-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .calc-btn {
+            background: white;
+            border: none;
+            border-radius: 14px;
+            padding: 0;
+            height: 56px;
+            font-size: 24px;
+            font-weight: 400;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            box-shadow: 
+                0 2px 4px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        }
+
+        .calc-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 
+                0 4px 8px rgba(0, 0, 0, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        }
+
+        .calc-btn:active {
+            transform: scale(0.95);
+            box-shadow: 
+                inset 0 2px 4px rgba(0, 0, 0, 0.1),
+                0 1px 0 rgba(255, 255, 255, 0.9);
+        }
+
+        .calc-function {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .calc-operator {
+            background: #ff9500;
+            color: white;
+            font-weight: 500;
+        }
+
+        .calc-equals {
+            background: #34c759;
+            color: white;
+            font-weight: 500;
+        }
+
+        .calc-zero {
+            grid-column: span 2;
+        }
+        
+        .calc-equals-tall {
+            grid-row: span 2;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator-container">
+        <div class="calculator-display">
+            <div class="calculator-history" id="calculatorHistory"></div>
+            <div class="calculator-expression" id="calculatorExpression">0</div>
+        </div>
+        <div class="calculator-buttons">
+            <button class="calc-btn calc-function" data-action="clear">AC</button>
+            <button class="calc-btn calc-function" data-value="(">(</button>
+            <button class="calc-btn calc-function" data-value=")">)</button>
+            <button class="calc-btn calc-function" data-action="backspace">⌫</button>
+            
+            <button class="calc-btn calc-function" data-action="sqrt">√</button>
+            <button class="calc-btn calc-function" data-action="square">x²</button>
+            <button class="calc-btn calc-function" data-value="%">%</button>
+            <button class="calc-btn calc-operator" data-value="+">+</button>
+            
+            <button class="calc-btn calc-number" data-value="7">7</button>
+            <button class="calc-btn calc-number" data-value="8">8</button>
+            <button class="calc-btn calc-number" data-value="9">9</button>
+            <button class="calc-btn calc-operator" data-value="-">−</button>
+            
+            <button class="calc-btn calc-number" data-value="4">4</button>
+            <button class="calc-btn calc-number" data-value="5">5</button>
+            <button class="calc-btn calc-number" data-value="6">6</button>
+            <button class="calc-btn calc-operator" data-value="*">×</button>
+            
+            <button class="calc-btn calc-number" data-value="1">1</button>
+            <button class="calc-btn calc-number" data-value="2">2</button>
+            <button class="calc-btn calc-number" data-value="3">3</button>
+            <button class="calc-btn calc-operator" data-value="/">÷</button>
+            
+            <button class="calc-btn calc-number" data-value=".">.</button>
+            <button class="calc-btn calc-number" data-value="0">0</button>
+            <button class="calc-btn calc-function" data-action="history">历史</button>
+            <button class="calc-btn calc-equals" data-action="equals">=</button>
+        </div>
+    </div>
+
+    <script>
+        // 计算器状态
+        let calculatorState = {
+            expression: '0',
+            lastOperator: null,
+            waitingForOperand: false,
+            justCalculated: false,
+            history: '',
+            previousResult: '',  // 保存上一次的完整算式
+            calculationHistory: []  // 计算历史记录
+        };
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            // 强制移除所有可能的边距
+            document.documentElement.style.margin = '0';
+            document.documentElement.style.padding = '0';
+            document.documentElement.style.border = 'none';
+            document.body.style.margin = '0';
+            document.body.style.padding = '12px';
+            document.body.style.border = 'none';
+            // 右键菜单：只对显示区域允许原生菜单（用于复制），其他区域禁用
+            initCalculatorContextMenu();
+            
+            restoreCalculatorState();
+            initCalculatorEvents();
+        });
+
+        // 初始化事件
+        function initCalculatorEvents() {
+            const buttons = document.querySelectorAll('.calc-btn');
+            buttons.forEach(btn => {
+                btn.onclick = () => handleButtonClick(btn);
+            });
+            document.addEventListener('keydown', handleKeyPress);
+        }
+
+        // 处理按钮点击
+        function handleButtonClick(btn) {
+            const action = btn.dataset.action;
+            const value = btn.dataset.value;
+
+            if (action === 'clear') {
+                resetCalculator();
+            } else if (action === 'backspace') {
+                backspace();
+            } else if (action === 'equals') {
+                calculate();
+            } else if (action === 'history') {
+                showHistory();
+            } else if (action === 'sqrt') {
+                // 开平方：获取最后一个数字并计算平方根
+                handleSqrt();
+            } else if (action === 'square') {
+                // 平方：获取最后一个数字并计算平方
+                handleSquare();
+            } else if (value) {
+                inputValue(value);
+            }
+        }
+        
+        // 处理开平方
+        function handleSqrt() {
+            const expr = calculatorState.expression;
+            // 提取最后一个数字
+            const match = expr.match(/(\d+\.?\d*)$/);
+            if (match) {
+                const num = parseFloat(match[1]);
+                if (num >= 0) {
+                    const result = Math.sqrt(num);
+                    calculatorState.expression = expr.slice(0, -match[1].length) + formatResult(result);
+                    updateDisplay();
+                } else {
+                    calculatorState.expression = 'Error';
+                    updateDisplay();
+                }
+            } else {
+                // 如果没有数字，或者表达式为空/以运算符结尾，添加 sqrt(
+                // 允许在表达式开头或运算符后直接输入 sqrt(
+                if (expr === '0' || expr === '' || ['+', '-', '*', '/', '(', '%'].includes(expr[expr.length - 1])) {
+                    if (expr === '0') {
+                        calculatorState.expression = 'sqrt(';
+                    } else {
+                        calculatorState.expression = expr + 'sqrt(';
+                    }
+                    calculatorState.justCalculated = false;
+                    updateDisplay();
+                } else {
+                    inputValue('sqrt(');
+                }
+            }
+        }
+        
+        // 处理平方
+        function handleSquare() {
+            const expr = calculatorState.expression;
+            // 提取最后一个数字
+            const match = expr.match(/(\d+\.?\d*)$/);
+            if (match) {
+                const num = parseFloat(match[1]);
+                const result = num * num;
+                calculatorState.expression = expr.slice(0, -match[1].length) + formatResult(result);
+                updateDisplay();
+            } else {
+                // 如果没有数字，添加 pow(,2)
+                inputValue('pow(');
+            }
+        }
+
+        // 处理键盘输入
+        function handleKeyPress(e) {
+            if (e.key >= '0' && e.key <= '9') {
+                inputValue(e.key);
+            } else if (e.key === '.') {
+                inputValue('.');
+            } else if (e.key === '+' || e.key === '-' || e.key === '*' || e.key === '/') {
+                inputValue(e.key);
+            } else if (e.key === '%') {
+                inputValue('%');
+            } else if (e.key === 'Enter' || e.key === '=') {
+                e.preventDefault();
+                calculate();
+            } else if (e.key === 'Escape') {
+                resetCalculator();
+            } else if (e.key === 'Backspace') {
+                e.preventDefault();
+                backspace();
+            }
+        }
+
+        // 输入验证
+        function validateInput(value) {
+            const expr = calculatorState.expression;
+            const lastChar = expr[expr.length - 1];
+            
+            // 检查小数点重复
+            if (value === '.') {
+                // 找到最后一个数字部分
+                const lastNumberMatch = expr.match(/(\d+\.?\d*)$/);
+                if (lastNumberMatch && lastNumberMatch[0].includes('.')) {
+                    return false; // 该数字已有小数点
+                }
+            }
+            
+            // 检查运算符连续（但允许负号，允许 % 后跟运算符）
+            if (['+', '*', '/', '%'].includes(value)) {
+                if (['+', '-', '*', '/', '%', '('].includes(lastChar)) {
+                    // 特殊处理：% 后面可以跟运算符
+                    if (lastChar === '%' && value !== '%') {
+                        return true; // % 后可以跟其他运算符
+                    }
+                    return false; // 运算符不能连续
+                }
+            }
+            
+            // 检查括号匹配（输入时）
+            if (value === ')') {
+                const openCount = (expr.match(/\(/g) || []).length;
+                const closeCount = (expr.match(/\)/g) || []).length;
+                if (closeCount >= openCount) {
+                    return false; // 右括号过多
+                }
+            }
+            
+            return true;
+        }
+
+        // ===================== 右键菜单处理 =====================
+        // 只对计算器显示区域允许原生右键菜单（用于复制），其他区域禁用
+        function initCalculatorContextMenu() {
+            document.addEventListener('contextmenu', (e) => {
+                const target = e.target.closest('.calculator-expression, .calculator-history');
+                if (!target) {
+                    // 其他区域禁用原生菜单
+                    e.preventDefault();
+                }
+                // 显示区域允许原生菜单显示，不做任何阻止
+            });
+        }
+
+        // 输入值
+        function inputValue(value) {
+            // 输入验证
+            if (!validateInput(value)) {
+                return; // 无效输入，忽略
+            }
+            
+            if (calculatorState.justCalculated) {
+                // 如果刚计算完，开始新输入时，将当前完整算式移到历史区
+                if (calculatorState.history) {
+                    const fullExpression = calculatorState.history.replace(/\*/g, '×') + 
+                                          calculatorState.expression.replace(/\*/g, '×');
+                    calculatorState.previousResult = fullExpression;
+                }
+                
+                if (['+', '-', '*', '/', '%', '(', 'sqrt(', 'pow('].includes(value)) {
+                    calculatorState.justCalculated = false;
+                } else {
+                    calculatorState.expression = '0';
+                    calculatorState.history = '';
+                    calculatorState.justCalculated = false;
+                }
+            }
+
+            if (calculatorState.expression === '0' && value !== '.' && value !== '(' && value !== ')' && !value.startsWith('sqrt') && !value.startsWith('pow')) {
+                calculatorState.expression = value;
+            } else if (calculatorState.expression === '0' && value === '(') {
+                // 如果表达式是 '0'，输入 '(' 时，直接替换为 '('
+                calculatorState.expression = '(';
+            } else {
+                calculatorState.expression += value;
+            }
+            updateDisplay();
+        }
+
+        // 退格
+        function backspace() {
+            if (calculatorState.expression.length > 1) {
+                calculatorState.expression = calculatorState.expression.slice(0, -1);
+            } else {
+                calculatorState.expression = '0';
+            }
+            calculatorState.justCalculated = false;
+            updateDisplay();
+        }
+
+        // 验证表达式（括号匹配等）
+        function validateExpression(expression) {
+            // 检查括号匹配
+            let openCount = 0;
+            for (let char of expression) {
+                if (char === '(') openCount++;
+                if (char === ')') openCount--;
+                if (openCount < 0) throw new Error('括号不匹配');
+            }
+            if (openCount !== 0) throw new Error('括号不匹配');
+            
+            // 检查运算符连续（不允许 ++, **, // 等，但允许 - 作为负号，允许 % 后接运算符）
+            const invalidPatterns = [
+                /\+\+/, /\*\*/, /\/\//,
+                /\+\*/, /\+\//, /\*\+/, /\*\//, /\/\+/, /\/\*/
+            ];
+            for (let pattern of invalidPatterns) {
+                if (pattern.test(expression)) {
+                    throw new Error('运算符连续');
+                }
+            }
+            
+            // 百分号特殊校验：不允许以 % 开头，不允许连续 %% ，不允许 % 后直接跟数字/小数点/左括号
+            if (expression.startsWith('%')) {
+                throw new Error('百分号位置错误');
+            }
+            if (/%%/.test(expression)) {
+                throw new Error('百分号重复');
+            }
+            if (/%[\d\.]/.test(expression)) {
+                throw new Error('百分号后缺少运算符');
+            }
+            
+            // 检查小数点重复（在同一个数字中）
+            const numberPattern = /\d+\.\d*\./;
+            if (numberPattern.test(expression)) {
+                throw new Error('小数点重复');
+            }
+        }
+
+        // 高精度计算函数
+        function preciseCalculate(expression) {
+            // 验证表达式
+            validateExpression(expression);
+            
+            // 预处理：将 % 转换为百分比（除以100）
+            // 例如：10% -> 0.1, 100*5% -> 100*0.05
+            // 注意：必须在 sqrt/pow 之前处理，避免 % 干扰函数参数解析
+            expression = expression.replace(/(\d+\.?\d*)%/g, '($1/100)');
+
+            // 预处理：处理函数 sqrt 和 pow（支持括号内嵌套表达式）
+            // 使用循环逐层替换，从最内层括号开始
+            let prevExpression;
+            let iterations = 0;
+            const maxIterations = 50; // 防止死循环
+            do {
+                prevExpression = expression;
+                // sqrt(...) -> 计算结果，支持嵌套表达式
+                expression = expression.replace(/sqrt\(([^()]+)\)/g, (match, innerExpr) => {
+                    const val = parseFloat(preciseCalculate(innerExpr));
+                    if (isNaN(val) || val < 0) throw new Error('sqrt参数无效');
+                    return String(Math.sqrt(val));
+                });
+                // pow(底数,指数) -> 计算结果，支持嵌套表达式
+                expression = expression.replace(/pow\(([^,]+),([^()]+)\)/g, (match, baseExpr, expExpr) => {
+                    const baseVal = parseFloat(preciseCalculate(baseExpr));
+                    const expVal = parseFloat(preciseCalculate(expExpr));
+                    if (isNaN(baseVal) || isNaN(expVal)) throw new Error('pow参数无效');
+                    return String(Math.pow(baseVal, expVal));
+                });
+                iterations++;
+            } while (expression !== prevExpression && iterations < maxIterations);
+
+            // 分词（支持数字、运算符、括号、科学计数法）
+            const tokens = expression.match(/(\d+\.?\d*(?:[eE][+-]?\d+)?|\+|\-|\*|\/|\(|\))/g);
+            if (!tokens) throw new Error('Invalid expression');
+            
+            let pos = 0;
+            
+            function peek() {
+                return tokens[pos];
+            }
+            
+            function consume() {
+                return tokens[pos++];
+            }
+            
+            // 解析表达式（处理加减）
+            function parseExpression() {
+                let left = parseTerm();
+                
+                while (peek() === '+' || peek() === '-') {
+                    const op = consume();
+                    const right = parseTerm();
+                    
+                    if (op === '+') {
+                        left = add(left, right);
+                    } else {
+                        left = subtract(left, right);
+                    }
+                }
+                
+                return left;
+            }
+            
+            // 解析项（处理乘除）
+            function parseTerm() {
+                let left = parseFactor();
+                
+                while (peek() === '*' || peek() === '/') {
+                    const op = consume();
+                    const right = parseFactor();
+                    
+                    if (op === '*') {
+                        left = multiply(left, right);
+                    } else {
+                        left = divide(left, right);
+                    }
+                }
+                
+                return left;
+            }
+            
+            // 解析因子（数字或括号）
+            function parseFactor() {
+                const token = peek();
+                
+                if (token === '(') {
+                    consume(); // (
+                    const result = parseExpression();
+                    consume(); // )
+                    return result;
+                }
+                
+                if (token === '-') {
+                    consume();
+                    return multiply(-1, parseFactor());
+                }
+                
+                return parseFloat(consume());
+            }
+            
+            // 获取数字的小数位数（兼容科学计数法）
+            function getDecimalPlaces(num) {
+                const str = num.toString();
+                // 处理科学计数法：1e-7 -> 7位小数，1.5e-3 -> 4位小数
+                if (str.includes('e') || str.includes('E')) {
+                    const match = str.match(/[eE]([+-]?\d+)/);
+                    if (match) {
+                        const exp = parseInt(match[1], 10);
+                        const decimalPart = (str.split('.')[1] || '').replace(/[eE].*/, '');
+                        if (exp < 0) {
+                            // 例如 1.23e-5 -> 小数位 = 2 + 5 = 7
+                            return decimalPart.length - exp;
+                        } else {
+                            // 例如 1.23e5 -> 小数位 = max(0, 2 - 5) = 0
+                            return Math.max(0, decimalPart.length - exp);
+                        }
+                    }
+                }
+                return (str.split('.')[1] || '').length;
+            }
+
+            // 高精度运算
+            function add(a, b) {
+                const precision = Math.max(getDecimalPlaces(a), getDecimalPlaces(b));
+                const multiplier = Math.pow(10, precision);
+                return Math.round((a * multiplier + b * multiplier)) / multiplier;
+            }
+
+            function subtract(a, b) {
+                return add(a, -b);
+            }
+
+            function multiply(a, b) {
+                const precision1 = getDecimalPlaces(a);
+                const precision2 = getDecimalPlaces(b);
+                const multiplier = Math.pow(10, precision1 + precision2);
+
+                const num1 = Math.round(a * Math.pow(10, precision1));
+                const num2 = Math.round(b * Math.pow(10, precision2));
+
+                return (num1 * num2) / multiplier;
+            }
+
+            function divide(a, b) {
+                if (b === 0) throw new Error('Division by zero');
+
+                const precision1 = getDecimalPlaces(a);
+                const precision2 = getDecimalPlaces(b);
+                const multiplier = Math.pow(10, Math.max(precision1, precision2));
+
+                const num1 = Math.round(a * multiplier);
+                const num2 = Math.round(b * multiplier);
+
+                return num1 / num2;
+            }
+            
+            return parseExpression();
+        }
+        
+        // 格式化结果
+        function formatResult(num) {
+            // 如果是整数，直接返回
+            if (Number.isInteger(num)) {
+                return num;
+            }
+            
+            // 处理非常小的数字（绝对值小于 1e-10 且不为0）
+            if (Math.abs(num) < 1e-10 && num !== 0) {
+                // 使用 toPrecision 保留有效数字，然后转换为数字
+                // 这样可以避免精度丢失
+                const precisionStr = num.toPrecision(15);
+                const precisionNum = parseFloat(precisionStr);
+                // 如果转换后变成0，说明精度确实太小，返回原始值
+                if (precisionNum === 0 && num !== 0) {
+                    return num; // 返回原始值，让显示层处理
+                }
+                return precisionNum;
+            }
+            
+            // 对于正常范围的数字，保留最多15位小数
+            const str = num.toFixed(15);
+            // 去除尾部的0
+            let trimmed = str.replace(/\.?0+$/, '');
+            
+            // 如果去除尾部0后变成空字符串或只有小数点，保留至少一位小数
+            if (trimmed === '' || trimmed === '.') {
+                trimmed = str;
+            }
+            
+            const parsed = parseFloat(trimmed);
+            
+            // 检查精度是否丢失：如果原数不是0但解析后是0，说明精度丢失
+            if (parsed === 0 && num !== 0 && Math.abs(num) >= Number.EPSILON) {
+                // 使用 toPrecision 保留有效数字
+                return parseFloat(num.toPrecision(15));
+            }
+            
+            return parsed;
+        }
+
+        // 计算
+        function calculate() {
+            try {
+                const result = preciseCalculate(calculatorState.expression);
+                const formattedResult = formatResult(result);
+                
+                // 对于非常小的数字，使用科学计数法显示
+                let displayResult;
+                if (Math.abs(formattedResult) < 1e-10 && formattedResult !== 0) {
+                    // 使用科学计数法显示
+                    displayResult = formattedResult.toExponential(10).replace(/\.?0+e/, 'e');
+                } else {
+                    displayResult = String(formattedResult);
+                }
+                
+                const originalExpr = calculatorState.expression;
+                calculatorState.history = originalExpr + '=';
+                calculatorState.expression = displayResult;
+                calculatorState.justCalculated = true;
+                
+                // 添加到历史记录（最多保存50条）
+                const historyEntry = {
+                    expression: originalExpr.replace(/\*/g, '×'),
+                    result: formattedResult,
+                    timestamp: new Date().toLocaleString('zh-CN')
+                };
+                calculatorState.calculationHistory.unshift(historyEntry);
+                if (calculatorState.calculationHistory.length > 50) {
+                    calculatorState.calculationHistory.pop();
+                }
+                saveCalculatorState();
+                
+                // 复制完整算式到剪贴板（单行格式）
+                const currentFullExpression = calculatorState.history.replace(/\*/g, '×') + formattedResult;
+                if (window.pythonBridge && typeof window.pythonBridge.copy_text === 'function') {
+                    window.pythonBridge.copy_text(currentFullExpression);
+                    console.log('已复制：' + currentFullExpression);
+                }
+            } catch (e) {
+                console.error('计算错误:', e);
+                calculatorState.expression = 'Error';
+            }
+            updateDisplay();
+        }
+        
+        // 显示历史记录
+        function showHistory() {
+            if (calculatorState.calculationHistory.length === 0) {
+                alert('暂无计算历史记录');
+                return;
+            }
+            
+            // 创建临时对话框显示历史
+            const historyDialog = document.createElement('div');
+            historyDialog.id = 'historyDialog';
+            historyDialog.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: white;
+                border-radius: 12px;
+                padding: 20px;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+                z-index: 10000;
+                width: 280px;
+                max-width: 280px;
+                max-height: 70vh;
+                overflow-y: auto;
+                overflow-x: hidden;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+            `;
+            
+            // 构建历史记录 HTML
+            let historyHTML = '';
+            calculatorState.calculationHistory.forEach((entry, index) => {
+                historyHTML += `<div class="history-item">${index + 1}. ${entry.expression} = ${entry.result}<br>时间: ${entry.timestamp}</div>`;
+            });
+            
+            historyDialog.innerHTML = `
+                <style>
+                    .history-item {
+                        font-family: 'Courier New', monospace;
+                        font-size: 12px;
+                        line-height: 1.3;
+                        color: #333;
+                        margin-bottom: 3px;
+                    }
+                    .history-item:last-child {
+                        margin-bottom: 0;
+                    }
+                    #historyContent {
+                        background: #f5f5f5;
+                        padding: 16px;
+                        border-radius: 6px;
+                    }
+                    /* 隐藏滚动条但保留滚动功能 */
+                    #historyDialog *::-webkit-scrollbar {
+                        display: none;
+                    }
+                </style>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3 style="margin: 0; font-size: 18px;">📊 计算历史记录</h3>
+                    <button id="closeHistoryBtn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #999;">✕</button>
+                </div>
+                <div id="historyContent">${historyHTML}</div>
+                <div style="margin-top: 16px; display: flex; gap: 8px; justify-content: flex-end;">
+                    <button id="copyHistoryBtn" style="padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer;">📋 复制</button>
+                    <button id="closeHistoryBtn2" style="padding: 6px 12px; background: #f5f5f5; color: #666; border: none; border-radius: 6px; cursor: pointer;">关闭</button>
+                </div>
+            `;
+            
+            document.body.appendChild(historyDialog);
+            
+            // 关闭按钮事件
+            const closeBtn = historyDialog.querySelector('#closeHistoryBtn');
+            const closeBtn2 = historyDialog.querySelector('#closeHistoryBtn2');
+            const copyBtn = historyDialog.querySelector('#copyHistoryBtn');
+            
+            const closeHistory = () => {
+                document.body.removeChild(historyDialog);
+            };
+            
+            closeBtn.addEventListener('click', closeHistory);
+            closeBtn2.addEventListener('click', closeHistory);
+            
+            copyBtn.addEventListener('click', async () => {
+                const content = historyDialog.querySelector('#historyContent');
+                if (window.pythonBridge && typeof window.pythonBridge.copy_text === 'function') {
+                    const success = await window.pythonBridge.copy_text(content.textContent);
+                    if (success) {
+                        alert('✅ 历史记录已复制到剪贴板');
+                    } else {
+                        alert('❌ 复制失败');
+                    }
+                } else {
+                    // 降级方案
+                    const textarea = document.createElement('textarea');
+                    textarea.value = content.textContent;
+                    textarea.style.position = 'fixed';
+                    textarea.style.opacity = '0';
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    try {
+                        document.execCommand('copy');
+                        alert('✅ 历史记录已复制到剪贴板');
+                    } catch (e) {
+                        alert('❌ 复制失败');
+                    }
+                    document.body.removeChild(textarea);
+                }
+            });
+            
+            // 点击外部关闭
+            historyDialog.addEventListener('click', (e) => {
+                if (e.target === historyDialog) {
+                    closeHistory();
+                }
+            });
+        }
+
+        // 重置
+        function resetCalculator() {
+            // 如果刚计算完，保存当前计算结果到上一行显示区域
+            let previousResult = calculatorState.previousResult || '';
+            if (calculatorState.justCalculated && calculatorState.history) {
+                // 将当前计算结果保存到上一行
+                const currentResult = calculatorState.expression;
+                const currentExpr = calculatorState.history.replace(/\*/g, '×').replace(/\//g, '÷');
+                previousResult = currentExpr + currentResult;
+            }
+            
+            calculatorState = {
+                expression: '0',
+                lastOperator: null,
+                waitingForOperand: false,
+                justCalculated: false,
+                history: '',
+                previousResult: previousResult,  // 保留上一行的显示
+                calculationHistory: calculatorState.calculationHistory || []  // 保留历史记录
+            };
+            updateDisplay();
+            saveCalculatorState();
+        }
+
+        // 更新显示
+        function updateDisplay() {
+            const display = document.getElementById('calculatorExpression');
+            const historyDisplay = document.getElementById('calculatorHistory');
+            
+            if (display) {
+                let displayText;
+                
+                // 计算完成后显示完整算式（单行）
+                if (calculatorState.justCalculated && calculatorState.history) {
+                    displayText = calculatorState.history.replace(/\*/g, '×').replace(/\//g, '÷') + 
+                                 calculatorState.expression.replace(/\*/g, '×').replace(/\//g, '÷');
+                } else {
+                    displayText = calculatorState.expression.replace(/\*/g, '×').replace(/\//g, '÷');
+                }
+                
+                display.textContent = displayText;
+                
+                display.classList.remove('long-expression', 'very-long-expression');
+                if (displayText.length > 20) {
+                    display.classList.add('very-long-expression');
+                } else if (displayText.length > 12) {
+                    display.classList.add('long-expression');
+                }
+            }
+            
+            if (historyDisplay) {
+                // 显示上一次的完整算式
+                const historyText = (calculatorState.previousResult || '').replace(/\*/g, '×').replace(/\//g, '÷');
+                historyDisplay.textContent = historyText;
+                // 强制设置字体大小
+                historyDisplay.style.fontSize = '20px';
+                historyDisplay.style.fontWeight = '500';
+                historyDisplay.style.color = '#999';
+            }
+            
+            saveCalculatorState();
+        }
+
+        // 保存状态
+        function saveCalculatorState() {
+            try {
+                localStorage.setItem('calculatorExpression', calculatorState.expression);
+                localStorage.setItem('calculatorHistory', calculatorState.history || '');
+                localStorage.setItem('calculatorPreviousResult', calculatorState.previousResult || '');
+                localStorage.setItem('calculatorCalculationHistory', JSON.stringify(calculatorState.calculationHistory));
+            } catch (e) {
+                console.warn('保存状态失败:', e);
+            }
+        }
+
+        // 恢复状态
+        function restoreCalculatorState() {
+            try {
+                const savedExpression = localStorage.getItem('calculatorExpression');
+                const savedHistory = localStorage.getItem('calculatorHistory');
+                const savedPreviousResult = localStorage.getItem('calculatorPreviousResult');
+                const savedCalculationHistory = localStorage.getItem('calculatorCalculationHistory');
+                
+                if (savedExpression && savedExpression !== 'Error' && savedExpression !== '0') {
+                    calculatorState.expression = savedExpression;
+                    if (savedHistory && savedHistory.includes('=')) {
+                        calculatorState.justCalculated = true;
+                    }
+                } else {
+                    calculatorState.expression = '0';
+                }
+                
+                calculatorState.history = savedHistory || '';
+                calculatorState.previousResult = savedPreviousResult || '';
+                
+                if (savedCalculationHistory) {
+                    try {
+                        calculatorState.calculationHistory = JSON.parse(savedCalculationHistory);
+                    } catch (e) {
+                        calculatorState.calculationHistory = [];
+                    }
+                } else {
+                    calculatorState.calculationHistory = [];
+                }
+                
+                updateDisplay();
+            } catch (e) {
+                console.warn('恢复状态失败:', e);
+                resetCalculator();
+            }
+        }
+    </script>
+</body>
+</html>

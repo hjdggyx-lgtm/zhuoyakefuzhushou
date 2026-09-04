@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>卓雅话术助手</title>
+    <link rel="stylesheet" href="styles.css?v=20260214-2355">
+    <script>
+        window.isDesktopApp = true;
+    </script>
+</head>
+<body>
+    <!-- 加载提示（启动时显示） -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>🚀 正在加载...</p>
+        </div>
+    </div>
+
+    <!-- 侧边栏标签右键菜单 -->
+    <div class="context-menu" id="sidebarTabContextMenu">
+        <div class="context-menu-item" data-action="clearMarks">
+            <span>清除标记</span>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item danger" data-action="deleteUnpinned">
+            <span>删除未钉标签</span>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item danger" data-action="deleteTab">
+            <span>删除标签</span>
+        </div>
+    </div>
+
+    <!-- 删除标签确认对话框 -->
+    <div class="dialog-overlay" id="deleteTabConfirmDialog" style="display: none;">
+        <div class="dialog-content" style="width: 200px;">
+            <div class="dialog-header">
+                <h3>确认删除</h3>
+            </div>
+            <div class="dialog-body">
+                <p>确定要删除这个标签吗？</p>
+            </div>
+            <div class="dialog-footer">
+                <button class="btn-secondary" id="cancelDeleteTab">取消</button>
+                <button class="btn-primary" id="confirmDeleteTab">删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 删除浏览器快捷方式确认对话框 -->
+    <div class="dialog-overlay" id="deleteBrowserConfirmDialog" style="display: none;">
+        <div class="dialog-content" style="width: 200px;">
+            <div class="dialog-header">
+                <h3>确认删除</h3>
+            </div>
+            <div class="dialog-body">
+                <p>确定要删除这个浏览器快捷方式吗？</p>
+            </div>
+            <div class="dialog-footer">
+                <button class="btn-secondary" id="cancelDeleteBrowser">取消</button>
+                <button class="btn-primary" id="confirmDeleteBrowser">删除</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- ⚠️ AI注意：顶部标签栏已隐藏（CSS display:none），侧边栏标签栏依赖此区域HTML和JS逻辑，请勿修改或删除！如需恢复，修改 styles.css 中 .customer-tabs-bar 的 display:none 为 display:flex -->
+        <div class="customer-tabs-bar">
+            <div class="customer-tabs" id="customerTabs">
+                <div class="customer-tab active" data-tab-id="1">
+                    <span class="tab-label">用户1</span>
+                    <button class="tab-close" title="关闭标签">×</button>
+                </div>
+            </div>
+            <button class="add-tab-btn" id="addCustomerTab" title="新建标签">+</button>
+        </div>
+
+        <!-- 内容包装器 -->
+        <div class="content-wrapper">
+            <!-- 左侧分类导航栏 -->
+            <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="font-controls-bar" aria-hidden="true">
+                    <!-- header buttons moved to bottom toolbar -->
+                </div>
+            </div>
+            <div class="category-nav" id="categoryNav">
+                <!-- 分类导航将在这里动态生成 -->
+            </div>
+            <div class="sidebar-footer">
+                <!-- Buttons moved to bottom spacer for progressive sidebar removal -->
+                <div class="sidebar-btn-group" aria-hidden="true"></div>
+                <!-- 侧边栏添加标签按钮（已隐藏） -->
+                <button class="sidebar-btn" id="addSidebarCustomerTab" title="新建标签" style="display:none">+</button>
+            </div>
+        </div>
+
+        <!-- 右侧主内容区域 -->
+        <div class="main-content">
+            <!-- 顶部搜索区域 -->
+            <!-- Primary categories (moved from sidebar) - will be populated at runtime -->
+            <div id="primaryCategoryTiles" class="subcategory-tabs-container primary-category-tiles" aria-label="一级分类平铺"></div>
+
+            <div class="header">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="" aria-label="搜索话术">
+                    <button id="searchBtn" class="search-btn" aria-label="搜索" title="搜索（Enter）">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                    </button>
+                    <button id="clearSearch" class="clear-btn" style="display: none;" aria-label="清除搜索" title="清除搜索">✕</button>
+                    <!-- 字幕覆盖层：当输入框为空且未聚焦时显示 -->
+                    <div class="marquee-overlay" id="searchMarquee" aria-hidden="true" role="presentation">
+                        <div class="marquee-interact">
+                            <div class="marquee-track" id="marqueeTrack">
+                                <span class="marquee-text" id="marqueeText">重要提醒：请确保在使用话术前仔细核对内容，避免发送错误信息！</span>
+                                <span class="marquee-text" id="marqueeTextDuplicate">重要提醒：请确保在使用话术前仔细核对内容，避免发送错误信息！</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 搜索框弹窗 -->
+                    <div id="searchDropdown" class="search-dropdown">
+                        <div class="search-dropdown-section search-dropdown-top"></div>
+                        <div class="search-dropdown-divider"></div>
+                        <div class="search-dropdown-section search-dropdown-bottom"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 标签栏已移除，所有功能在侧边栏 -->
+
+            <!-- 话术列表容器（包含左侧区域和话术列表） -->
+            <div class="content-area-wrapper">
+                <!-- 左侧区域 -->
+                <div class="left-sidebar-area">
+                    <!-- 钉住按钮缺口 -->
+                    <div class="pin-notch">
+                        <button class="pin-float-btn" id="pinFloatBtn">
+                            <svg viewBox="0 0 1024 1024" width="26" height="26" style="vertical-align: middle;">
+                                <path d="M383.978667 768L110.933333 972.8c-39.466667 29.610667-89.344-20.266667-59.733333-59.733333L256 640.021333l-115.498667-115.477333a42.666667 42.666667 0 0 1 3.413334-63.424 298.133333 298.133333 0 0 1 267.712-54.4l174.570666-174.549333a233.941333 233.941333 0 0 1 50.005334-173.589334 42.666667 42.666667 0 0 1 63.402666-3.413333l269.226667 269.226667a42.666667 42.666667 0 0 1-3.413333 63.402666 233.941333 233.941333 0 0 1-173.589334 50.005334l-174.570666 174.570666a298.133333 298.133333 0 0 1-54.4 267.712 42.666667 42.666667 0 0 1-63.402667 3.413334L384 768.021333z m-67.050667-67.029333L298.666667 725.333333l24.362666-18.261333-6.101333-6.101333z m356.608-463.36a42.666667 42.666667 0 0 1-11.498667 39.381333l-208.704 208.725333a42.666667 42.666667 0 0 1-45.653333 9.6 213.226667 213.226667 0 0 0-169.28 6.442667L522.24 785.6a213.226667 213.226667 0 0 0 6.442667-169.301333 42.666667 42.666667 0 0 1 9.6-45.632l208.725333-208.704a42.666667 42.666667 0 0 1 39.402667-11.498667 149.333333 149.333333 0 0 0 82.666666-5.162667l-190.378666-190.378666a149.333333 149.333333 0 0 0-5.162667 82.666666z" fill="#cc0000" stroke="#cc0000" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <!-- 侧边栏客户标签容器 -->
+                    <div class="sidebar-customer-tabs" id="sidebarCustomerTabs">
+                        <!-- 侧边栏标签将在这里动态生成，与顶部标签完全同步 -->
+                    </div>
+                    <!-- 侧边栏添加标签按钮（已隐藏） -->
+                    <button class="add-tab-btn" id="addSidebarCategoryBtn" title="新建标签" style="display:none">+</button>
+                </div>
+                <!-- 话术列表 -->
+                <div class="tab-content active" id="searchTab">
+                    <div class="phrase-list" id="phraseList">
+                        <div class="empty-state">
+                            <p>😊 暂无话术</p>
+                            <p>点击"添加话术"按钮开始使用</p>
+                            <button id="emptyAddPhraseBtn" class="btn btn-primary" style="margin-top: 15px;">
+                                ➕ 添加话术
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 管理标签页（已隐藏，功能已集成到主面板和设置对话框） -->
+            <div class="tab-content" id="manageTab" style="display: none;">
+                <div class="manage-section">
+                    <h3>话术管理</h3>
+                    <!-- 这些按钮已移到设置对话框或主面板 -->
+                </div>
+
+                <div class="manage-section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h3 style="margin: 0;">分类管理</h3>
+                        <button onclick="cleanOrphanCategories()" class="btn-secondary" style="font-size: 12px; padding: 6px 12px;" title="删除父级已不存在的二级分类">
+                            🧹 清理孤儿分类
+                        </button>
+                    </div>
+                    <div class="category-list" id="categoryList">
+                        <!-- 分类列表 -->
+                    </div>
+                </div>
+
+                <div class="manage-section">
+                    <h3>设置</h3>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="autoFocusInput">
+                            自动聚焦到输入框
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="showNotification">
+                            显示插入成功提示
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="incrementUseCount">
+                            自动记录使用次数
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="copyOnClick">
+                            点击话术复制而不插入（适用于有页面保护的情况）
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="showMarquee">
+                            显示滚动提醒字幕
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label for="marqueeText" style="display: block; margin-bottom: 8px;">字幕内容</label>
+                        <input type="text" id="marqueeText" placeholder="请输入字幕内容" style="width: 100%; padding: 8px; border: 1px solid #d0d0d0; border-radius: 4px;" aria-label="字幕内容">
+                    </div>
+                    <div class="setting-item">
+                        <label for="sortMode" style="display: block; margin-bottom: 8px;">话术排序方式</label>
+                        <select id="sortMode" style="width: 100%; padding: 8px; border: 1px solid #d0d0d0; border-radius: 4px;" aria-label="话术排序方式">
+                            <option value="manual">手动排序（可拖拽调整）</option>
+                            <option value="click_count">按点击次数排序</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 主题颜色选择器 -->
+                    <div class="setting-item">
+                        <label style="display: block; margin-bottom: 12px; font-weight: 600;">🎨 主题颜色</label>
+                        <div class="theme-selector">
+                            <!-- 第一排：浅色渐变主题 -->
+                            <div class="theme-row">
+                                <div class="theme-color-box" data-theme="purple" title="💜 紫色渐变"></div>
+                                <div class="theme-color-box" data-theme="red" title="❤️ 红色渐变"></div>
+                                <div class="theme-color-box" data-theme="orange" title="🧡 橙色渐变"></div>
+                                <div class="theme-color-box" data-theme="green" title="💚 绿色渐变"></div>
+                            </div>
+                            <!-- 第二排：高级灰色系 -->
+                            <div class="theme-row">
+                                <div class="theme-color-box" data-theme="light-gray" title="🖥️ Qt6原生"></div>
+                                <div class="theme-color-box" data-theme="metal-gray" title="⚙️ 金属灰"></div>
+                                <div class="theme-color-box" data-theme="champagne" title="🌟 香槟金"></div>
+                                <div class="theme-color-box" data-theme="cloud-gray" title="☁️ 云雾灰"></div>
+                            </div>
+                            <!-- 第三排：深色主题 -->
+                            <div class="theme-row">
+                                <div class="theme-color-box" data-theme="dark-blue" title="🌑 暗黑蓝"></div>
+                                <div class="theme-color-box" data-theme="dark-gray" title="🌫️ 暗灰色"></div>
+                                <div class="theme-color-box" data-theme="dark-purple" title="🌌 暗紫色"></div>
+                                <div class="theme-color-box" data-theme="dark-green" title="🍃 暗绿色"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="manage-section">
+                    <h3>关于</h3>
+                    <div class="about-info">
+                        <p>版本：1.0.0</p>
+                        <p>卓雅话术助手浏览器插件</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div> <!-- 关闭 content-wrapper -->
+    </div> <!-- 关闭 container -->
+
+    <!-- 添加/编辑话术对话框 -->
+    <div id="phraseDialog" class="dialog-overlay" style="display: none;">
+        <div class="dialog">
+            <div class="dialog-header">
+                <h3 id="dialogTitle">添加话术</h3>
+                <button class="close-btn">✕</button>
+            </div>
+            <div class="dialog-body">
+                <!-- 样式设置 - 移到内容编辑框上方 -->
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; margin-bottom: 8px;">
+                        <span style="font-weight: 600;">🎨 文字样式（选中文字后应用）</span>
+                    </label>
+                    <div class="style-options" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <label for="phraseTextColor" style="font-size: 13px; color: #666;">字体颜色:</label>
+                            <div style="position: relative; display: inline-block;">
+                                <input type="color" id="phraseTextColor" value="#333333" style="width: 50px; height: 32px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; opacity: 0; position: absolute; z-index: 2;">
+                                <div id="phraseTextColorDisplay" style="width: 50px; height: 32px; border: 1px solid #ddd; border-radius: 4px; background: #333333; position: relative; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; color: #dc2626; pointer-events: none; user-select: none;">A</div>
+                            </div>
+                            <button type="button" id="clearTextColor" style="padding: 4px 8px; font-size: 12px; border: 1px solid #ddd; background: #f5f5f5; border-radius: 4px; cursor: pointer;">清除</button>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <label for="phraseBgColor" style="font-size: 13px; color: #666;">背景颜色:</label>
+                            <div style="position: relative; display: inline-block;">
+                                <input type="color" id="phraseBgColor" value="#ffffff" style="width: 50px; height: 32px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; opacity: 0; position: absolute; z-index: 2;">
+                                <div id="phraseBgColorDisplay" style="width: 50px; height: 32px; border: 1px solid #ddd; border-radius: 4px; background: #ffffff; position: relative; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; pointer-events: none; user-select: none; color: #eab308;">◼</div>
+                            </div>
+                            <button type="button" id="clearBgColor" style="padding: 4px 8px; font-size: 12px; border: 1px solid #ddd; background: #f5f5f5; border-radius: 4px; cursor: pointer;">清除</button>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <label class="feature-option" style="margin: 0; display: flex; align-items: center; gap: 6px;">
+                                <input type="checkbox" id="phraseIsBold">
+                                <span style="font-size: 13px;">加粗</span>
+                            </label>
+                        </div>
+                    </div>
+                    <small style="display: block; margin-top: 8px; color: #999; font-size: 12px;">
+                        提示：在下方编辑框中选中文字，然后选择样式属性即可自动应用到选中文字
+                    </small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="phraseContent">话术内容 *</label>
+                    <div id="phraseContent" contenteditable="true" style="min-height: 120px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: white; font-size: 14px; line-height: 1.6; outline: none; word-wrap: break-word; white-space: pre-wrap;" aria-label="话术内容"></div>
+                </div>
+                <div class="form-group">
+                    <label for="phraseCategory">分类</label>
+                    <div class="custom-select phrase-category-select" id="phraseCategory" role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-label="选择分类">
+                        <div class="custom-select-trigger" tabindex="0">
+                            <span class="custom-select-value">话术回收</span>
+                            <svg class="custom-select-arrow" width="12" height="12" viewBox="0 0 12 12"><path fill="currentColor" d="M6 9L1 4h10z"/></svg>
+                        </div>
+                        <ul class="custom-select-dropdown" role="listbox">
+                            <li class="custom-select-option selected" data-value="1" role="option">话术回收</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="phraseTags">标签（用逗号分隔）</label>
+                    <input type="text" id="phraseTags" placeholder="例如：问候,客服" aria-label="输入标签">
+                    <div class="tag-prefix-option" style="margin-top: 8px;">
+                        <label class="feature-option" style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <input type="checkbox" id="tagPrefix">
+                            <span>📌 标签前置（标签显示在话术前面）</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="phraseJumpCategory">跳转设置</label>
+                    <div class="custom-select phrase-jump-category-select" id="phraseJumpCategory" role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-label="选择跳转分类">
+                        <div class="custom-select-trigger" tabindex="0">
+                            <span class="custom-select-value">-- 不跳转 --</span>
+                            <svg class="custom-select-arrow" width="12" height="12" viewBox="0 0 12 12"><path fill="currentColor" d="M6 9L1 4h10z"/></svg>
+                        </div>
+                        <ul class="custom-select-dropdown" role="listbox">
+                            <li class="custom-select-option selected" data-value="" role="option">-- 不跳转 --</li>
+                        </ul>
+                    </div>
+                    <small style="display:block;color:#888;margin-top:6px;">选择后将在话术卡片中显示跳转链接，点击可快速跳转到该分类</small>
+                </div>
+
+                <!-- 功能选项 -->
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; margin-bottom: 8px;">
+                        <span style="font-weight: 600;">✨ 扩展功能</span>
+                    </label>
+                    <div class="feature-options">
+                        <label class="feature-option">
+                            <input type="checkbox" id="enablePlaceholder">
+                            <span>📝 启用补全功能</span>
+                            <small style="display: block; margin-left: 24px; color: #999; font-size: 12px;">
+                                内容含大括号 {自定名称=}时可勾选，点击填写；放入=号点击填写时有计算器可直接填入算式，大括号非补全用途请勿勾选
+                            </small>
+                        </label>
+                        <label class="feature-option">
+                            <input type="checkbox" id="enableImages">
+                            <span>🖼️ 启用图片功能</span>
+                            <small style="display: block; margin-left: 24px; color: #999; font-size: 12px;">
+                                可为话术添加图片附件
+                            </small>
+                        </label>
+                        <label class="feature-option">
+                            <input type="checkbox" id="disableClickCopy">
+                            <span>🚫 关闭点击复制</span>
+                            <small style="display: block; margin-left: 24px; color: #999; font-size: 12px;">
+                                关闭后卡片无法点击复制，但可以选择文本复制
+                            </small>
+                        </label>
+                        <label class="feature-option">
+                            <input type="checkbox" id="enableDescription">
+                            <span>📋 说明</span>
+                            <small style="display: block; margin-left: 24px; color: #999; font-size: 12px;">
+                                可为话术添加使用说明
+                            </small>
+                        </label>
+                        <label class="feature-option">
+                            <input type="checkbox" id="enableVariants">
+                            <span>➕ 更多</span>
+                            <small style="display: block; margin-left: 24px; color: #999; font-size: 12px;">
+                                为话术添加子话术（点击更多展开）
+                            </small>
+                        </label>
+                        <label class="feature-option">
+                            <input type="checkbox" id="actAsTitle">
+                            <span>🏷️ 作为标题</span>
+                            <small style="display: block; margin-left: 24px; color: #999; font-size: 12px;">
+                                勾选后等效于"关闭点击复制"+"更多"合体：该话术作为标题卡片，点击展开子话术
+                            </small>
+                        </label>
+                        <label class="feature-option" id="actTitleTextEditorRow" style="display:none; margin-left: 24px;">
+                            <input type="checkbox" id="actTitleTextEditor">
+                            <span>📝 文本编辑器小图标</span>
+                            <small style="display: block; margin-left: 24px; color: #999; font-size: 12px;">
+                                作为标题话术文本前面显示文本编辑器小图标，点击打开
+                            </small>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="dialog-footer">
+                <button class="btn-secondary">取消</button>
+                <button class="btn-primary">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加分类对话框 -->
+    <div id="categoryDialog" class="dialog-overlay" style="display: none;">
+        <div class="dialog">
+            <div class="dialog-header">
+                <h3 id="categoryDialogTitle">添加分类</h3>
+                <button class="close-btn">✕</button>
+            </div>
+            <div class="dialog-body">
+                <div class="form-group">
+                    <label for="categoryName">分类名称 *</label>
+                    <input type="text" id="categoryName" placeholder="请输入分类名称..." aria-label="分类名称">
+                </div>
+                <div class="form-group" id="categoryParentGroup">
+                    <label for="categoryParent">父级分类</label>
+                    <div class="custom-select category-parent-select" id="categoryParent" role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-label="父级分类">
+                        <div class="custom-select-trigger" tabindex="0">
+                            <span class="custom-select-value">（无）顶级分类</span>
+                            <svg class="custom-select-arrow" width="12" height="12" viewBox="0 0 12 12"><path fill="currentColor" d="M6 9L1 4h10z"/></svg>
+                        </div>
+                        <ul class="custom-select-dropdown" role="listbox">
+                            <li class="custom-select-option selected" data-value="0" role="option">（无）顶级分类</li>
+                        </ul>
+                    </div>
+                    <small style="display:block;color:#888;margin-top:6px;">提示：不能选择"话术回收"作为父级</small>
+                </div>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="categoryShowTextEditor" style="width: auto; margin: 0;">
+                        <span>显示文本编辑按钮</span>
+                    </label>
+                    <small style="display:block;color:#888;margin-top:6px;">勾选后，该分类在分类列表中会显示文本编辑按钮</small>
+                </div>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="categoryEnableAlias" style="width: auto; margin: 0;">
+                        <span>启用代名词</span>
+                    </label>
+                    <small style="display:block;color:#888;margin-top:6px;">启用后可通过代名词快速选中该分类</small>
+                </div>
+                <div class="form-group">
+                    <label for="categoryAlias">分类代名词</label>
+                    <input type="text" id="categoryAlias" placeholder="例如：kh 或 work" aria-label="分类代名词">
+                    <small style="display:block;color:#888;margin-top:6px;">仅支持小写字母（a-z），且全局不能重复</small>
+                </div>
+                
+            </div>
+            <div class="dialog-footer">
+                <button class="btn-secondary">取消</button>
+                <button class="btn-primary" id="categoryDialogSaveBtn">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加/编辑标题对话框 -->
+    <div id="titleDialog" class="dialog-overlay" style="display: none;">
+        <div class="dialog">
+            <div class="dialog-header">
+                <h3 id="titleDialogTitle">添加标题</h3>
+                <button class="close-btn">✕</button>
+            </div>
+            <div class="dialog-body">
+                <div class="form-group">
+                    <label for="titleDialogInput">标题内容 *</label>
+                    <input type="text" id="titleDialogInput" placeholder="请输入标题内容..." aria-label="标题内容">
+                </div>
+                <div class="form-group" style="display: none;">
+                    <label for="titleDialogPosition">插入位置</label>
+                    <div class="custom-select title-position-select" id="titleDialogPosition" role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-label="选择插入位置">
+                        <div class="custom-select-trigger" tabindex="0">
+                            <span class="custom-select-value">最后面</span>
+                            <svg class="custom-select-arrow" width="12" height="12" viewBox="0 0 12 12"><path fill="currentColor" d="M6 9L1 4h10z"/></svg>
+                        </div>
+                        <ul class="custom-select-dropdown" role="listbox">
+                            <li class="custom-select-option selected" data-value="end" role="option">最后面</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="titleDialogShowEditor" style="width: auto; margin: 0;">
+                        <span>显示文本编辑按钮</span>
+                    </label>
+                    <small style="display:block;color:#888;margin-top:6px;">勾选后，该标题上会显示文本编辑图标</small>
+                </div>
+            </div>
+            <div class="dialog-footer">
+                <button class="btn-secondary">取消</button>
+                <button class="btn-primary" id="titleDialogSaveBtn">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 占位符补全对话框 -->
+    <div id="placeholderDialog" class="dialog-overlay" style="display: none;">
+        <div class="dialog dialog-large">
+            <div class="dialog-header">
+                <h3>📝 补全占位符</h3>
+                <button class="close-btn" id="closePlaceholderBtn">✕</button>
+            </div>
+            <div class="dialog-body">
+                <div id="placeholderInputs" style="margin-bottom: 16px;">
+                    <!-- 动态生成的占位符输入框 -->
+                </div>
+                
+                <label style="font-weight: 600; margin-bottom: 8px; display: block; color: #666;">📋 预览结果（点击复制）：</label>
+                <div id="placeholderPreview" 
+                     style="padding: 8px 12px; background: #e8f5e9; border-radius: 6px; white-space: pre-wrap; min-height: 60px; cursor: pointer; transition: background 0.2s;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 图片管理对话框 -->
+    <div id="imagesDialog" class="dialog-overlay" style="display: none;">
+        <div class="dialog dialog-large">
+            <div class="dialog-header">
+                <h3>🖼️ 图片管理 <small style="font-size: 18px; color: #999; font-weight: normal;">（点击图片复制）</small></h3>
+                <button class="close-btn" id="closeImagesBtn">✕</button>
+            </div>
+            <div class="dialog-body" style="padding-bottom: 0;">
+                <div class="images-container" id="imagesContainer">
+                    <!-- 动态生成的图片列表 -->
+                </div>
+            </div>
+            <div class="dialog-footer" style="display: flex; gap: 10px;">
+                <input type="file" id="imageFileInput" accept="image/*" style="display: none;" aria-label="选择图片文件">
+                <button class="btn-primary" id="addImageBtn">
+                    ➕ 添加图片
+                </button>
+                <button class="btn-primary" id="pasteImageBtn">
+                    📋 粘贴图片
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 说明编辑对话框 -->
+    <div id="descriptionDialog" class="dialog-overlay" style="display: none;">
+        <div class="dialog dialog-large">
+            <div class="dialog-header description-dialog-header">
+                <h3>📋 使用说明</h3>
+                <button class="close-btn" id="closeDescriptionBtn">✕</button>
+            </div>
+            <div class="dialog-body description-dialog-body">
+                <div id="descriptionContent" contenteditable="true" spellcheck="false" placeholder="请输入这条话术的使用说明..." style="width: 100%; min-height: 300px; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; font-family: inherit; overflow-y: auto; outline: none;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 分类右键菜单 -->
+    <div class="context-menu" id="categoryContextMenu">
+        <div class="context-menu-item" data-action="addPhrase">
+            <span>添加话术</span>
+        </div>
+        <div class="context-menu-item" data-action="addCategory">
+            <span>添加分类</span>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" data-action="editCategory">
+            <span>编辑分类</span>
+        </div>
+        <div class="context-menu-item danger" data-action="deleteCategory">
+            <span>删除分类</span>
+        </div>
+    </div>
+    
+    <!-- 使用说明右键菜单 -->
+    <div class="context-menu" id="descriptionContextMenu">
+        <div class="context-menu-label">格式</div>
+        <div class="context-menu-row">
+            <div class="context-menu-item" data-command="bold" id="descCtxBold">
+                <strong>B</strong> <span>加粗</span>
+            </div>
+            <div class="context-menu-item" data-command="copy" id="descCtxCopy">
+                <span>📋 复制</span>
+            </div>
+        </div>
+        <div class="context-menu-row">
+            <div class="context-menu-item" data-command="italic" id="descCtxItalic">
+                <em>I</em> <span>斜体</span>
+            </div>
+            <div class="context-menu-item" data-command="paste" id="descCtxPaste">
+                <span>📄 粘贴</span>
+            </div>
+        </div>
+        <div class="context-menu-row">
+            <div class="context-menu-item" data-command="underline" id="descCtxUnderline">
+                <u>U</u> <span>下划线</span>
+            </div>
+            <div class="context-menu-item" data-command="cut" id="descCtxCut">
+                <span>✂️ 剪切</span>
+            </div>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-label">字体</div>
+        <div class="context-menu-input-group">
+            <label>大小:</label>
+            <div class="custom-select ctx-fontsize-select" id="descCtxFontSize" role="combobox" aria-expanded="false">
+                <div class="custom-select-trigger" tabindex="0">
+                    <span class="custom-select-value">16px</span>
+                    <svg class="custom-select-arrow" width="10" height="10" viewBox="0 0 12 12"><path fill="currentColor" d="M6 9L1 4h10z"/></svg>
+                </div>
+                <ul class="custom-select-dropdown" role="listbox">
+                    <li class="custom-select-option" data-value="1" role="option">8px</li>
+                    <li class="custom-select-option" data-value="2" role="option">10px</li>
+                    <li class="custom-select-option" data-value="3" role="option">12px</li>
+                    <li class="custom-select-option" data-value="4" role="option">14px</li>
+                    <li class="custom-select-option selected" data-value="5" role="option">16px</li>
+                    <li class="custom-select-option" data-value="6" role="option">18px</li>
+                    <li class="custom-select-option" data-value="7" role="option">24px</li>
+                    <li class="custom-select-option" data-value="8" role="option">32px</li>
+                    <li class="custom-select-option" data-value="9" role="option">48px</li>
+                </ul>
+            </div>
+        </div>
+        <div class="context-menu-input-group">
+            <label>字体:</label>
+            <div class="custom-select ctx-fontfamily-select" id="descCtxFontFamily" role="combobox" aria-expanded="false">
+                <div class="custom-select-trigger" tabindex="0">
+                    <span class="custom-select-value">微软雅黑</span>
+                    <svg class="custom-select-arrow" width="10" height="10" viewBox="0 0 12 12"><path fill="currentColor" d="M6 9L1 4h10z"/></svg>
+                </div>
+                <ul class="custom-select-dropdown" role="listbox">
+                    <li class="custom-select-option" data-value="Arial" role="option">Arial</li>
+                    <li class="custom-select-option" data-value="Times New Roman" role="option">Times New Roman</li>
+                    <li class="custom-select-option" data-value="Courier New" role="option">Courier New</li>
+                    <li class="custom-select-option" data-value="Verdana" role="option">Verdana</li>
+                    <li class="custom-select-option" data-value="Georgia" role="option">Georgia</li>
+                    <li class="custom-select-option" data-value="Palatino" role="option">Palatino</li>
+                    <li class="custom-select-option" data-value="Garamond" role="option">Garamond</li>
+                    <li class="custom-select-option" data-value="Comic Sans MS" role="option">Comic Sans MS</li>
+                    <li class="custom-select-option" data-value="Trebuchet MS" role="option">Trebuchet MS</li>
+                    <li class="custom-select-option selected" data-value="Microsoft YaHei" role="option">微软雅黑</li>
+                    <li class="custom-select-option" data-value="SimSun" role="option">宋体</li>
+                    <li class="custom-select-option" data-value="SimHei" role="option">黑体</li>
+                    <li class="custom-select-option" data-value="KaiTi" role="option">楷体</li>
+                    <li class="custom-select-option" data-value="FangSong" role="option">仿宋</li>
+                </ul>
+            </div>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-label">颜色</div>
+        <div class="context-menu-input-group">
+            <label>文字:</label>
+            <input type="color" id="descCtxTextColor" value="#000000">
+        </div>
+        <div class="context-menu-input-group">
+            <label>背景:</label>
+            <input type="color" id="descCtxBgColor" value="#ffffff">
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" data-command="removeFormat" id="descCtxRemoveFormat">
+            <span>清除格式</span>
+        </div>
+        <div class="context-menu-item" data-command="toggleLock" id="descCtxToggleLock">
+            <span id="descLockMenuIcon">🔒</span> <span id="descLockMenuText">解锁编辑</span>
+        </div>
+    </div>
+
+    <!-- 内联脚本 -->
+    <script>
+        // 检查是否在PyWebView环境中，如果是则使用Python的刷新函数
+        async function refreshData() {
+            try {
+                // 首先尝试调用Python暴露的刷新函数
+                if (window.pywebview && typeof window.pywebview.api.refresh_app === 'function') {
+                    const result = await window.pywebview.api.refresh_app();
+                    if (result) {
+                        return; // Python刷新成功
+                    }
+                }
+                
+                // 如果不是PyWebView环境，则本地刷新数据
+                await loadCategories();
+                await loadPhrases();
+                showToast('✅ 数据已刷新');
+            } catch (error) {
+                console.error('刷新失败:', error);
+                showToast('❌ 刷新失败: ' + error.message, 'error');
+            }
+        }
+        
+        // 暴露给全局使用
+        window.refreshData = refreshData;
+    </script>
+
+    <!-- 设置对话框 -->
+    <div id="settingsDialog" class="dialog-overlay" style="display: none;">
+        <div class="dialog dialog-large">
+            <div class="dialog-header">
+                <h3>⚙️ 设置</h3>
+                <button class="close-btn" id="closeSettingsBtn">✕</button>
+            </div>
+            <div class="dialog-body">
+                <!-- 简化的设置页面 -->
+                
+                <!-- 搜索框字幕设置 -->
+                <div class="setting-item" style="padding: 8px 0;">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" id="searchMarqueeToggle" style="margin-right: 8px;">
+                        <span>📺 显示搜索框字幕</span>
+                    </label>
+                </div>
+                <div class="setting-item" style="padding: 8px 0;">
+                    <button id="editSearchMarqueeBtn" class="action-btn" style="width: auto; padding: 6px 12px; font-size: 12px;">
+                        ✏️ 编辑字幕内容
+                    </button>
+                </div>
+
+                <!-- 标题卡片折叠开关 -->
+                <div class="setting-item" style="padding: 8px 0;">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" id="enableTitleCollapse" style="margin-right: 8px;" disabled title="已废弃：标题功能已舍弃，改用「作为标题」子话术方案">
+                        <span>🧩 标题卡片可折叠（已禁用）</span>
+                    </label>
+                </div>
+
+                <!-- 复制后自动聚焦（best-effort，仅在本应用内） -->
+                <div class="setting-item" style="padding: 8px 0; display: none;">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" id="autoFocusAfterCopy" style="margin-right: 8px;">
+                        <span>🎯 复制后尝试自动粘贴到上次外部输入框（尽力而为）</span>
+                    </label>
+                </div>
+
+                <!-- 二级分类显示模式 -->
+                <div class="setting-item" style="padding: 8px 0; margin-top: 10px; border-top: 1px solid #e0e0e0;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">📂 二级分类显示模式</label>
+                    <!-- ⚠️ PyQt 桌面版：弹层模式为历史遗留方案，目前仅保留禁用选项作兼容提示，实际只优化和使用“平铺模式（tabs）” -->
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <label id="subcategoryPopoverLabel" style="display: flex; align-items: center; cursor: not-allowed; opacity: 0.65;" title="已禁用（保持现状）">
+                        <input type="radio" name="subcategoryMode" value="popover" id="subcategoryModePopover" style="margin-right: 8px;" disabled aria-disabled="true">
+                        <span>弹层模式（悬停显示）</span>
+                    </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="radio" name="subcategoryMode" value="tabs" id="subcategoryModeTabs" style="margin-right: 8px;">
+                            <span>平铺模式（顶部标签）</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- 限制二级分类容器高度开关 -->
+                <div class="setting-item" style="padding: 8px 0; margin-top: 8px;">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" id="limitSubcategoryHeight" style="margin-right: 8px;">
+                        <span>📏 限制二级分类容器高度（超出显示右侧滚动条）</span>
+                    </label>
+                </div>
+                
+                <!-- 主题颜色选择器 -->
+                <div class="setting-item" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #e0e0e0;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">🎨 主题颜色</label>
+                    <div class="theme-selector">
+                        <!-- 第一排：浅色渐变主题 -->
+                        <div class="theme-row">
+                            <div class="theme-color-box" data-theme="purple" title="💜 紫色渐变"></div>
+                            <div class="theme-color-box" data-theme="red" title="❤️ 红色渐变"></div>
+                            <div class="theme-color-box" data-theme="orange" title="🧡 橙色渐变"></div>
+                            <div class="theme-color-box" data-theme="green" title="💚 绿色渐变"></div>
+                        </div>
+                        <!-- 第二排：高级灰色系 -->
+                        <div class="theme-row">
+                            <div class="theme-color-box" data-theme="light-gray" title="🖥️ Qt6原生"></div>
+                            <div class="theme-color-box" data-theme="metal-gray" title="⚙️ 金属灰"></div>
+                            <div class="theme-color-box" data-theme="champagne" title="🌟 香槟金"></div>
+                            <div class="theme-color-box" data-theme="cloud-gray" title="☁️ 云雾灰"></div>
+                        </div>
+                        <!-- 第三排：深色主题 -->
+                        <div class="theme-row">
+                            <div class="theme-color-box" data-theme="dark-blue" title="🌑 暗黑蓝"></div>
+                            <div class="theme-color-box" data-theme="dark-gray" title="🌫️ 暗灰色"></div>
+                            <div class="theme-color-box" data-theme="dark-purple" title="🌌 暗紫色"></div>
+                            <div class="theme-color-box" data-theme="dark-green" title="🍃 暗绿色"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 第二数据库备份 -->
+                <div class="setting-item" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e0e0e0;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 13px;">💾 第二数据库备份</label>
+                    
+                    <!-- 启用备份复选框 -->
+                    <div class="setting-item" style="padding: 8px 0;">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" id="enableSecondBackup" style="margin-right: 8px;">
+                            <span>🔄 启用第二数据库备份</span>
+                        </label>
+                    </div>
+                    
+                    <!-- 备份路径设置（默认隐藏） -->
+                    <div id="secondBackupSettings" style="display: none; margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 4px; border: 1px solid #e0e0e0;">
+                        <div style="margin-bottom: 8px;">
+                            <label style="display: block; margin-bottom: 4px; font-size: 12px; font-weight: 500;">备份路径：</label>
+                            <div style="display: flex; gap: 8px; align-items: stretch;">
+                                <input type="text" id="secondBackupPath" placeholder="请选择备份文件夹..."
+                                    style="flex: 1; height: 31px; padding: 6px 8px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px; font-family: monospace;"
+                                    readonly>
+                                <button id="browseBackupPathBtn" class="action-btn" style="width: auto; height: 31px; padding: 6px 12px; font-size: 12px; white-space: nowrap;">
+                                    📁
+                                </button>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <label style="display: block; margin-bottom: 4px; font-size: 12px; font-weight: 500;">最大备份数量：</label>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <input type="number" id="maxBackupCount" min="1" max="50" value="10"
+                                    style="width: 80px; height: 31px; padding: 6px 8px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px; text-align: center;">
+                                <span style="font-size: 11px; color: #666;">个（超过自动删除最老的备份）</span>
+                            </div>
+                        </div>
+                        <div style="font-size: 11px; color: #666; line-height: 1.5;">
+                            💡 轮转备份：每次话术变化时自动创建新备份，保留最近的 N 个备份，永不覆盖历史备份。<br>
+                            📁 建议备份到与应用不同的磁盘分区，避免磁盘损坏时数据一起丢失！
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 数据管理 -->
+                <div class="setting-item" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e0e0e0;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 13px;">📦 数据管理</label>
+                    <div style="display: flex; flex-direction: column; gap: 3px; align-items: flex-start;">
+                        <button id="importBtn" class="action-btn" style="width: auto; padding: 4px 10px; font-size: 12px; opacity: 0.6; cursor: not-allowed;" title="请使用下方的「导入备份数据」功能">
+                            📥 导入话术 <span style="font-size: 10px; color: #999;">待开发</span>
+                        </button>
+                        <button id="exportBtn" class="action-btn" style="width: auto; padding: 4px 10px; font-size: 12px; opacity: 0.6; cursor: not-allowed;" title="备份功能已自动运行，请查看「第二数据库备份」设置">
+                            📤 导出话术 <span style="font-size: 10px; color: #999;">待开发</span>
+                        </button>
+                        <button id="importBackupBtn" class="action-btn" style="width: auto; padding: 4px 10px; font-size: 12px;" title="从备份文件夹恢复所有数据（话术、分类、设置）">
+                            📂 导入备份数据
+                        </button>
+                        <button id="usageLogBtn" class="action-btn" style="width: auto; padding: 4px 10px; font-size: 12px;">
+                            📊 查看使用日志
+                        </button>
+                        <button id="viewAllSubcategoriesBtn" class="action-btn" onclick="viewAllSubcategories()" style="width: auto; padding: 4px 10px; font-size: 12px;" title="查看数据库中所有二级分类及其父级关系">
+                            📋 查看所有二级分类
+                        </button>
+                        <button id="batchDeleteCategoriesBtn" class="action-btn" onclick="promptBatchDeleteCategories()" style="width: auto; padding: 4px 10px; font-size: 12px; color: #d14343;" title="输入分类ID进行批量删除（会级联删除分类及其所有话术）">
+                            🗑️ 批量删除分类
+                        </button>
+                        <button id="recycleBinBtn" class="action-btn" style="width: auto; padding: 4px 10px; font-size: 12px;" title="查看和管理已删除的话术">
+                            🗑️ 话术回收站
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 版本信息 -->
+                <div class="setting-item" style="margin-top: 8px; padding-top: 6px; border-top: 1px solid #e0e0e0;">
+                    <div style="color: #888; font-size: 11px; font-weight: 400;">
+                        卓雅客服助手 v5.0
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 搜索框字幕编辑对话框 -->
+    <div id="searchMarqueeDialog" class="dialog-overlay" style="display: none;">
+        <div class="dialog">
+            <div class="dialog-header">
+                <h3>✏️ 编辑搜索框字幕</h3>
+                <button class="close-btn" id="closeSearchMarqueeBtn">✕</button>
+            </div>
+            <div class="dialog-body">
+                <div class="form-group">
+                    <label for="searchMarqueeContent">字幕内容（多行用换行分隔）</label>
+                    <textarea id="searchMarqueeContent" style="width: 100%; min-height: 120px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; resize: vertical;" placeholder="请输入字幕内容，每行一条"></textarea>
+                </div>
+            </div>
+            <div class="dialog-footer">
+                <button class="btn-secondary" id="cancelSearchMarqueeBtn">取消</button>
+                <button class="btn-primary" id="saveSearchMarqueeBtn">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 使用日志对话框 -->
+    <div id="usageLogDialog" class="dialog-overlay" style="display: none;">
+        <div class="dialog dialog-large" style="max-width: 900px;">
+            <div class="dialog-header">
+                <h3>📊 使用日志</h3>
+                <button class="close-btn" id="closeUsageLogBtn">✕</button>
+            </div>
+            <div class="dialog-body" style="padding: 16px;">
+                <div id="usageLogContent" style="font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.6; white-space: pre-wrap; background: #f5f5f5; padding: 16px; border-radius: 6px; max-height: 60vh; overflow-y: auto; color: #333;"></div>
+            </div>
+            <div class="dialog-footer" style="padding: 12px 16px; border-top: 1px solid #e0e0e0; display: flex; justify-content: flex-end; gap: 8px;">
+                <button class="btn-secondary" id="clearUsageLogBtn" style="color: #d14343;">🧹 清除日志</button>
+                <button class="btn-secondary" id="copyUsageLogBtn">📋 复制日志</button>
+                <button class="btn-secondary" id="closeUsageLogBtn2">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 计算器弹窗 -->
+    <div id="calculatorModal" class="dialog-overlay" style="display: none;">
+        <div class="calculator-container">
+            <div class="calculator-header">
+                <span class="calculator-title">🧮 计算器</span>
+            </div>
+            <div class="calculator-display">
+                <div class="calculator-history" id="calculatorHistory"></div>
+                <div class="calculator-expression" id="calculatorExpression">0</div>
+            </div>
+            <div class="calculator-buttons">
+                <button class="calc-btn calc-function" data-action="clear">AC</button>
+                <button class="calc-btn calc-function" data-action="backspace">⌫</button>
+                <button class="calc-btn calc-function" data-value="%">%</button>
+                <button class="calc-btn calc-operator" data-value="/">÷</button>
+                
+                <button class="calc-btn calc-number" data-value="7">7</button>
+                <button class="calc-btn calc-number" data-value="8">8</button>
+                <button class="calc-btn calc-number" data-value="9">9</button>
+                <button class="calc-btn calc-operator" data-value="*">x</button>
+                
+                <button class="calc-btn calc-number" data-value="4">4</button>
+                <button class="calc-btn calc-number" data-value="5">5</button>
+                <button class="calc-btn calc-number" data-value="6">6</button>
+                <button class="calc-btn calc-operator" data-value="-">−</button>
+                
+                <button class="calc-btn calc-number" data-value="1">1</button>
+                <button class="calc-btn calc-number" data-value="2">2</button>
+                <button class="calc-btn calc-number" data-value="3">3</button>
+                <button class="calc-btn calc-operator" data-value="+">+</button>
+                
+                <button class="calc-btn calc-number calc-zero" data-value="0">0</button>
+                <button class="calc-btn calc-number" data-value=".">.</button>
+                <button class="calc-btn calc-equals" data-action="equals">=</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通用右键菜单 -->
+    <div id="universalContextMenu" class="context-menu">
+        <!-- 右键菜单内容将在这里动态生成 -->
+    </div>
+
+    <!-- 上班弹窗（上拉弹窗） -->
+    <div id="workPopover" class="work-popover">
+        <div class="work-popover-content">
+            <div class="work-popover-header">
+                <span class="work-popover-title">浏览器快捷方式</span>
+                <button id="closeWorkPopover" class="work-popover-close">×</button>
+            </div>
+            <div class="work-popover-list" id="workBrowserList">
+                <!-- 浏览器快捷方式列表将在这里动态生成 -->
+            </div>
+            <div class="work-popover-footer">
+                <button id="addBrowserBtn" class="work-popover-add-btn">
+                    <span class="work-popover-add-icon">+</span>
+                    <span class="work-popover-add-text">添加谷歌浏览器</span>
+                </button>
+                <button id="setDefaultUrlBtn" class="work-popover-add-btn" onclick="showSetDefaultUrlDialog(); closeWorkPopover();">
+                    <span class="work-popover-add-icon">🔗</span>
+                    <span class="work-popover-add-text">修改默认网址</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设置默认网址弹窗 -->
+    <div id="setDefaultUrlDialog" class="dialog-overlay" style="display: none;">
+        <div class="dialog">
+            <div class="dialog-header">
+                <h3>🔗 修改上班默认网址</h3>
+                <button class="close-btn" onclick="closeSetDefaultUrlDialog()">✕</button>
+            </div>
+            <div class="dialog-body">
+                <div class="form-group">
+                    <label for="defaultUrlInput">默认网址</label>
+                    <input type="text" id="defaultUrlInput" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;" placeholder="请输入网址，如 https://www.baidu.com">
+                </div>
+                <div style="font-size: 12px; color: #666; margin-top: 8px;">
+                    💡 设置后，点击上班按钮将直接打开此网址。默认为百度。
+                </div>
+            </div>
+            <div class="dialog-footer">
+                <button class="btn-secondary" onclick="resetDefaultUrl()">恢复默认</button>
+                <button class="btn-secondary" onclick="closeSetDefaultUrlDialog()">取消</button>
+                <button class="btn-primary" onclick="saveDefaultUrl()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载脚本 -->
+    <!-- 底部留白区域（应用底部黏贴行，高36px，背景与侧栏一致） -->
+    <div id="appBottomSpacer" class="app-bottom-spacer" aria-hidden="true">
+        <div class="bottom-btns" role="toolbar" aria-label="底部工具栏">
+            <div class="bottom-btns-inner" style="display:flex; padding-left:0;">
+                <button id="addPhraseQuickBtn" class="font-size-btn font-text-btn" title="快速添加话术">
+                    <span class="font-text">+话术</span>
+                </button>
+                <button id="settingsQuickBtn" class="font-size-btn font-text-btn" title="添加分类">
+                    <span class="font-text">+分类</span>
+                </button>
+                <button id="fontDecreaseBtn" class="font-size-btn font-decrease" title="缩小字体">
+                    <span class="font-icon">A</span>
+                </button>
+                <button id="fontIncreaseBtn" class="font-size-btn font-increase" title="放大字体">
+                    <span class="font-icon">A</span>
+                </button>
+                <button id="addCategorySidebarBtn" class="sidebar-btn sidebar-btn-half" title="打开设置">
+                    <span class="btn-label">设置</span>
+                </button>
+                <button id="calculatorBtn" class="sidebar-btn sidebar-btn-half" title="计算器">
+                    <span class="btn-label">计算器</span>
+                </button>
+                <button id="toggleCategorySortModeBtn" class="sidebar-btn" title="点击进入分类排序模式">
+                    <span class="btn-icon" aria-hidden="true">☰</span>
+                    <span class="btn-label">分类排序</span>
+                </button>
+                <button id="toggleSortModeBtn" class="sidebar-btn" title="点击进入排序模式">
+                    <span class="btn-icon" aria-hidden="true">☰</span>
+                    <span class="btn-label">话术排序</span>
+                </button>
+                <!-- 公告解读按钮已隐藏，保留代码 -->
+                <button id="announcementBtn" class="sidebar-btn" style="display: none;">
+                    <span class="btn-label">公告解读</span>
+                </button>
+                <!-- 模式切换按钮 -->
+                <button id="modeSwitchBtn" class="sidebar-btn" title="切换操作模式">
+                    <span class="btn-label" id="modeSwitchBtnLabel">点击模式</span>
+                </button>
+                <!-- 上班按钮 -->
+                <button id="workBtn" class="sidebar-btn" title="上班">
+                    <span class="btn-label">上班</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="db.js?v=20251112-2303"></script>
+    <script src="app.js?v=20250503-0210"></script>
+    <script>
+        // Robust mover: watch #categoryNav for children and move them into #primaryCategoryTiles.
+        // Uses MutationObserver + retry loop to catch dynamic rendering by app.js.
+        (function(){
+            function movePrimaryTilesOnce(){
+                try {
+                    var src = document.getElementById('categoryNav');
+                    var dst = document.getElementById('primaryCategoryTiles');
+                    if (!src || !dst) return false;
+                    if (!src.firstChild) return false;
+                    // Move all child nodes (preserve event listeners)
+                    while (src.firstChild) {
+                        dst.appendChild(src.firstChild);
+                    }
+                    // Preserve 'has-active' if present on src
+                    if (src.classList.contains('has-active')) dst.classList.add('has-active');
+                    console.log('[zhuoya-move] moved primary categories to top tiles');
+                    return true;
+                } catch (e) {
+                    console.error('[zhuoya-move-error]', e);
+                    return false;
+                }
+            }
+
+            function observeAndRetry(){
+                var src = document.getElementById('categoryNav');
+                var dst = document.getElementById('primaryCategoryTiles');
+                if (!dst) return;
+                // Try immediate move first (in case items already present)
+                if (movePrimaryTilesOnce()) return;
+
+                // MutationObserver to catch future renders into #categoryNav
+                if (src) {
+                    var mo = new MutationObserver(function(muts){
+                        if (movePrimaryTilesOnce()) {
+                            // optional: disconnect after successful move to avoid repeatedly moving
+                        }
+                    });
+                    try { mo.observe(src, { childList: true }); } catch (e) {}
+                }
+
+                // Retry loop as fallback (10 attempts)
+                var attempts = 0;
+                var iv = setInterval(function(){
+                    attempts++;
+                    if (movePrimaryTilesOnce() || attempts >= 10) {
+                        clearInterval(iv);
+                    }
+                }, 300);
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', observeAndRetry);
+            } else {
+                observeAndRetry();
+            }
+        })();
+
+        // 悬浮按钮点击切换颜色
+        (function() {
+            var pinBtn = document.getElementById('pinFloatBtn');
+            if (pinBtn) {
+                pinBtn.addEventListener('click', function() {
+                    var svgPath = pinBtn.querySelector('path');
+                    if (svgPath) {
+                        var fill = svgPath.getAttribute('fill');
+                        // 切换按钮颜色
+                        if (fill === '#cc0000') {
+                            // 切换到蓝色
+                            svgPath.setAttribute('fill', '#007CF7');
+                            svgPath.setAttribute('stroke', '#007CF7');
+                            if (typeof updateCurrentTabPinState === 'function') {
+                                updateCurrentTabPinState(false);
+                            }
+                        } else {
+                            // 切换到红色
+                            svgPath.setAttribute('fill', '#cc0000');
+                            svgPath.setAttribute('stroke', '#cc0000');
+                            if (typeof updateCurrentTabPinState === 'function') {
+                                updateCurrentTabPinState(true);
+                            }
+                        }
+                    }
+                });
+            }
+        })();
+    </script>
+</body>
+</html>

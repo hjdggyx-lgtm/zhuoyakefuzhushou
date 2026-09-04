@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>补全占位符</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: auto;
+            min-height: 100vh;
+        }
+        
+        .content-wrapper {
+            padding: 20px;
+            font-size: 16px;
+            display: block;
+        }
+        
+        #placeholderInputs {
+            margin-bottom: 12px;
+            display: block;
+            width: 100%;
+        }
+        
+        .placeholder-input-group {
+            display: block;
+            width: 100%;
+        }
+        
+        .placeholder-input-group label {
+            font-size: 16px;
+            display: block;
+            width: 100%;
+        }
+        
+        .placeholder-input-group input {
+            font-size: 16px;
+            padding: 12px 14px;
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .preview-section {
+            margin-top: 12px;
+            margin-bottom: 0;
+            display: block;
+            width: 100%;
+        }
+        
+        .preview-label {
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: block;
+            color: #666;
+            font-size: 16px;
+        }
+        
+        #placeholderPreview {
+            padding: 16px 20px;
+            background: #e8f5e9;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            min-height: 120px;
+            max-height: 300px;
+            overflow-y: auto;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 16px;
+            line-height: 1.8;
+        }
+        
+        #placeholderPreview:hover {
+            background: #c8e6c9;
+        }
+    </style>
+</head>
+<body>
+    <!-- 占位符补全内容 -->
+    <div class="content-wrapper">
+        <div id="placeholderInputs">
+            <!-- 动态生成的占位符输入框 -->
+        </div>
+        
+        <div class="preview-section">
+            <label class="preview-label">📋 预览结果（点击复制）：</label>
+            <div id="placeholderPreview"></div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== 通用右键菜单 ====================
+        let universalContextMenu = null;
+        let currentContextTarget = null;
+
+        // 创建通用右键菜单
+        function createUniversalContextMenu() {
+            if (universalContextMenu) return universalContextMenu;
+            
+            const menu = document.createElement('div');
+            menu.id = 'universalContextMenu';
+            menu.className = 'universal-context-menu';
+            menu.innerHTML = `
+                <div class="universal-context-item" data-command="copy">
+                    <span>📋 复制</span>
+                </div>
+                <div class="universal-context-item" data-command="paste">
+                    <span>📄 粘贴</span>
+                </div>
+                <div class="universal-context-item" data-command="cut">
+                    <span>✂️ 剪切</span>
+                </div>
+            `;
+            
+            // 添加样式
+            const style = document.createElement('style');
+            style.textContent = `
+                .universal-context-menu {
+                    position: fixed;
+                    background: white;
+                    border: 1px solid #ccc;
+                    border-radius: 4px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    padding: 4px 0;
+                    z-index: 99999;
+                    display: none;
+                    min-width: 100px;
+                    font-size: 14px;
+                }
+                
+                .universal-context-menu.show {
+                    display: block;
+                }
+                
+                .universal-context-item {
+                    padding: 6px 12px;
+                    cursor: pointer;
+                    user-select: none;
+                }
+                
+                .universal-context-item:hover {
+                    background-color: #f0f0f0;
+                }
+            `;
+            
+            document.head.appendChild(style);
+            document.body.appendChild(menu);
+            
+            // 绑定菜单项点击事件
+            menu.addEventListener('click', async (e) => {
+                const item = e.target.closest('.universal-context-item');
+                if (!item || !currentContextTarget) return;
+                
+                const command = item.dataset.command;
+                e.stopPropagation();
+                
+                try {
+                    currentContextTarget.focus();
+                    
+                    if (command === 'copy') {
+                        // 复制选中文本
+                        const selectedText = currentContextTarget.value.substring(
+                            currentContextTarget.selectionStart,
+                            currentContextTarget.selectionEnd
+                        );
+                        if (selectedText && window.pythonBridge && window.pythonBridge.copy_text) {
+                            window.pythonBridge.copy_text(selectedText);
+                            console.log('[LOG] 已复制:', selectedText);
+                        }
+                    } else if (command === 'paste') {
+                        // 使用包装函数读取剪贴板
+                        const text = await callPythonGetText();
+                        console.log('[LOG] 读取到剪贴板内容:', text);
+                        if (text && currentContextTarget.tagName === 'INPUT') {
+                            const start = currentContextTarget.selectionStart || 0;
+                            const end = currentContextTarget.selectionEnd || 0;
+                            const value = currentContextTarget.value || '';
+                            currentContextTarget.value = value.substring(0, start) + text + value.substring(end);
+                            currentContextTarget.selectionStart = currentContextTarget.selectionEnd = start + text.length;
+                            
+                            // 触发 input 事件以更新预览
+                            const inputEvent = new Event('input', { bubbles: true });
+                            currentContextTarget.dispatchEvent(inputEvent);
+                            console.log('[LOG] 已粘贴:', text);
+                        }
+                    } else if (command === 'cut') {
+                        // 剪切选中文本
+                        const start = currentContextTarget.selectionStart || 0;
+                        const end = currentContextTarget.selectionEnd || 0;
+                        const selectedText = currentContextTarget.value.substring(start, end);
+                        
+                        if (selectedText && window.pythonBridge && window.pythonBridge.copy_text) {
+                            window.pythonBridge.copy_text(selectedText);
+                            currentContextTarget.value = currentContextTarget.value.substring(0, start) + currentContextTarget.value.substring(end);
+                            currentContextTarget.selectionStart = currentContextTarget.selectionEnd = start;
+                            
+                            // 触发 input 事件以更新预览
+                            const inputEvent = new Event('input', { bubbles: true });
+                            currentContextTarget.dispatchEvent(inputEvent);
+                            console.log('[LOG] 已剪切:', selectedText);
+                        }
+                    }
+                } catch (error) {
+                    console.error('[LOG] 右键菜单操作失败:', error);
+                }
+                
+                hideUniversalContextMenu();
+            });
+            
+            universalContextMenu = menu;
+            return menu;
+        }
+
+        // 显示通用右键菜单
+        function showUniversalContextMenu(x, y, target) {
+            if (!universalContextMenu) {
+                createUniversalContextMenu();
+            }
+            
+            currentContextTarget = target;
+            
+            universalContextMenu.style.left = x + 'px';
+            universalContextMenu.style.top = y + 'px';
+            universalContextMenu.classList.add('show');
+            
+            // 位置调整
+            const menuRect = universalContextMenu.getBoundingClientRect();
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            
+            let adjustedX = x + 10;
+            let adjustedY = y + 3;
+            
+            if (adjustedX + menuRect.width > windowWidth) {
+                adjustedX = windowWidth - menuRect.width - 10;
+            }
+            if (adjustedY + menuRect.height > windowHeight) {
+                adjustedY = windowHeight - menuRect.height - 10;
+            }
+            
+            universalContextMenu.style.left = adjustedX + 'px';
+            universalContextMenu.style.top = adjustedY + 'px';
+        }
+
+        // 隐藏通用右键菜单
+        function hideUniversalContextMenu() {
+            if (universalContextMenu) {
+                universalContextMenu.classList.remove('show');
+            }
+            currentContextTarget = null;
+        }
+
+        // Python Bridge 包装函数
+        function callPythonGetText() {
+            return new Promise((resolve) => {
+                try {
+                    if (!window.pythonBridge || typeof window.pythonBridge.getClipboardText !== 'function') {
+                        return resolve(null);
+                    }
+                    const fn = window.pythonBridge.getClipboardText;
+                    if (fn.length >= 1) {
+                        // 如果函数需要回调参数
+                        fn.call(window.pythonBridge, (text) => resolve(text ?? ""));
+                    } else {
+                        // 如果是同步返回
+                        const ret = fn.call(window.pythonBridge);
+                        resolve(ret ?? "");
+                    }
+                } catch (error) {
+                    console.warn('[LOG] Python 桥读取文本失败:', error);
+                    resolve(null);
+                }
+            });
+        }
+
+        // 初始化通用右键菜单
+        function initUniversalContextMenu() {
+            createUniversalContextMenu();
+            
+            // 点击其他地方隐藏菜单
+            document.addEventListener('click', (e) => {
+                if (universalContextMenu && !universalContextMenu.contains(e.target)) {
+                    hideUniversalContextMenu();
+                }
+            }, true);
+            
+            document.addEventListener('mousedown', (e) => {
+                if (universalContextMenu && !universalContextMenu.contains(e.target)) {
+                    hideUniversalContextMenu();
+                }
+            }, true);
+        }
+    </script>
+    
+    <script src="db.js"></script>
+    <script>
+        // 从 URL 参数获取数据
+        const urlParams = new URLSearchParams(window.location.search);
+        const phraseContent = urlParams.get('content') || '';
+        const placeholdersJson = urlParams.get('placeholders') || '[]';
+        let placeholders = [];
+        
+        try {
+            placeholders = JSON.parse(decodeURIComponent(placeholdersJson));
+        } catch (e) {
+            console.error('[LOG] 解析占位符失败:', e);
+        }
+
+        console.log('[LOG] 占位符对话框初始化:', {
+            content: phraseContent,
+            placeholders: placeholders
+        });
+
+        // 存储占位符值
+        let placeholderValues = {};
+        let currentPlaceholderPhrase = {
+            content: phraseContent,
+            placeholder_names: placeholders
+        };
+
+        // 初始化页面
+        function init() {
+            const inputsContainer = document.getElementById('placeholderInputs');
+            const preview = document.getElementById('placeholderPreview');
+            
+            // 生成占位符输入框
+            inputsContainer.innerHTML = '';
+            if (placeholders && placeholders.length > 0) {
+                placeholders.forEach(placeholder => {
+                    const inputGroup = document.createElement('div');
+                    inputGroup.className = 'placeholder-input-group';
+                    inputGroup.innerHTML = `
+                        <label>${placeholder}：</label>
+                        <input type="text" data-placeholder="${placeholder}" placeholder="请输入${placeholder}">
+                    `;
+                    inputsContainer.appendChild(inputGroup);
+                    
+                    // 添加实时预览
+                    const input = inputGroup.querySelector('input');
+                    input.addEventListener('input', updatePlaceholderPreview);
+                    
+                    // 添加右键菜单
+                    input.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        showUniversalContextMenu(e.clientX, e.clientY, input);
+                    });
+                });
+            } else {
+                inputsContainer.innerHTML = '<p style="color: #999; text-align: center;">该话术没有占位符</p>';
+            }
+            
+            // 初始预览
+            updatePlaceholderPreview();
+            
+            // 绑定预览点击复制
+            if (preview) {
+                preview.onclick = copyAndClosePlaceholder;
+            }
+            
+            // 初始化通用右键菜单
+            initUniversalContextMenu();
+        }
+
+        // 更新预览
+        function updatePlaceholderPreview() {
+            if (!currentPlaceholderPhrase) return;
+            
+            const preview = document.getElementById('placeholderPreview');
+            const inputs = document.querySelectorAll('#placeholderInputs input');
+            
+            // 收集所有占位符的值
+            placeholderValues = {};
+            inputs.forEach(input => {
+                const placeholder = input.dataset.placeholder;
+                placeholderValues[placeholder] = input.value;
+            });
+            
+            // 替换占位符生成预览
+            let result = currentPlaceholderPhrase.content;
+            Object.keys(placeholderValues).forEach(placeholder => {
+                const value = placeholderValues[placeholder] || `{${placeholder}}`;
+                result = result.replace(new RegExp(`\\{${placeholder}\\}`, 'g'), value);
+            });
+            
+            preview.textContent = result;
+        }
+
+        // 关闭对话框
+        function closePlaceholderDialog() {
+            if (window.pythonBridge && typeof window.pythonBridge.closePlaceholderDialog === 'function') {
+                window.pythonBridge.closePlaceholderDialog();
+            } else {
+                window.close();
+            }
+        }
+
+        // 复制并关闭
+        async function copyAndClosePlaceholder() {
+            const preview = document.getElementById('placeholderPreview');
+            const text = preview.textContent.trim();
+            
+            if (!text) return;
+            
+            try {
+                // 优先使用 Python Bridge
+                if (window.pythonBridge && typeof window.pythonBridge.copy_text === 'function') {
+                    const success = await window.pythonBridge.copy_text(text);
+                    if (success) {
+                        console.log('[LOG] 复制成功');
+                        closePlaceholderDialog();
+                        return;
+                    }
+                }
+                
+                // 备用方案
+                await navigator.clipboard.writeText(text);
+                console.log('[LOG] 复制成功（备用方案）');
+                closePlaceholderDialog();
+            } catch (error) {
+                console.error('[LOG] 复制失败:', error);
+            }
+        }
+
+        // 键盘快捷键
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closePlaceholderDialog();
+            }
+        });
+
+        // 页面加载完成后初始化
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    </script>
+</body>
+</html>

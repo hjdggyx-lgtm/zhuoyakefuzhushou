@@ -1,0 +1,11 @@
+# 卓雅话术助手 - Python 依赖
+
+# PyQt6 核心库
+PyQt6>=6.4.0
+
+# PyQt6 WebEngine（用于加载 HTML/JS）
+PyQt6-WebEngine>=6.4.0
+
+# 可选：打包工具
+# PyInstaller>=5.0.0
+

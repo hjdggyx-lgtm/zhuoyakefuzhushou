@@ -1,0 +1,22 @@
+# 备份文件
+*.bak
+*.bak-*
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# 打包产物
+build/
+dist/
+
+# 运行时数据与日志
+data/
+logs/
+debug.log
+error_log.txt
+
+# 工具/缓存目录与快照
+.codeartsdoer/
+.codegraph/
+.merkle-snapshot.json

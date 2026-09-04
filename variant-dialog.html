@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>变形话术管理</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .variant-container {
+            width: 100%;
+            padding: 3px;
+            box-sizing: border-box;
+        }
+        
+        .variant-list {
+            margin-top: 0;
+            margin-bottom: 3px;
+        }
+        
+        .variant-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 6px 12px;
+            margin: 0 0 3px 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .variant-card:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .variant-content {
+            font-size: 18px;
+            line-height: 1.3;
+            color: #333;
+            flex: 1;
+            min-width: 0;
+            /* 允许多行显示并在容器宽度不足时换行，避免省略号截断 */
+            white-space: normal;
+            overflow: visible;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+        
+        .variant-actions {
+            /* 不占用流式布局空间，绝对定位到卡片右下，避免提前换行 */
+            position: absolute;
+            right: 12px;
+            bottom: 12px;
+            top: auto;
+            transform: none;
+            display: flex;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity 0.18s ease;
+            pointer-events: none;
+        }
+        
+        .variant-card:hover .variant-actions,
+        .variant-card.hovering .variant-actions {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        /* 多行时把动作按钮放到底部右侧 */
+        .variant-card.multiline .variant-actions {
+            top: auto;
+            bottom: 12px;
+            transform: none;
+        }
+        
+        .variant-btn {
+            padding: 4px 12px;
+            font-size: 12px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .variant-btn:hover {
+            background: #f5f5f5;
+        }
+        
+        .variant-btn.copy-btn {
+            border-color: #667eea;
+            color: #667eea;
+        }
+        
+        .variant-btn.copy-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .variant-btn.edit-btn {
+            border-color: #4caf50;
+            color: #4caf50;
+        }
+        
+        .variant-btn.edit-btn:hover {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .variant-btn.delete-btn {
+            border-color: #f44336;
+            color: #f44336;
+        }
+        
+        .variant-btn.delete-btn:hover {
+            background: #f44336;
+            color: white;
+        }
+        
+        .add-variant-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: 2px dashed rgba(255,255,255,0.5);
+            border-radius: 8px;
+            padding: 2px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            line-height: 1.4;
+            box-sizing: border-box;
+        }
+        
+        .add-variant-card:hover {
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        .add-variant-card .text {
+            font-size: 14px;
+            color: white;
+            font-weight: 500;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+        
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+        
+        .empty-state .text {
+            font-size: 14px;
+        }
+        
+        /* 编辑模态框样式 */
+        .edit-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .edit-modal.show {
+            display: flex;
+        }
+        
+        .edit-modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        
+        .edit-modal-header {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #333;
+        }
+        
+        .edit-modal-body textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: vertical;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+        
+        .edit-modal-footer {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 16px;
+        }
+        
+        .modal-btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .modal-btn.cancel {
+            background: #f5f5f5;
+            color: #666;
+        }
+        
+        .modal-btn.cancel:hover {
+            background: #e0e0e0;
+        }
+        
+        .modal-btn.confirm {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .modal-btn.confirm:hover {
+            opacity: 0.9;
+        }
+        
+        /* Toast 提示样式 */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 10001;
+            font-size: 14px;
+            animation: toastSlideIn 0.3s ease-out;
+            opacity: 0;
+            transform: translateX(100%);
+        }
+        
+        .toast-success {
+            background: #667eea;
+            color: white;
+        }
+        
+        .toast-error {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .toast-hide {
+            animation: toastSlideOut 0.3s ease-out forwards;
+        }
+        
+        @keyframes toastSlideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes toastSlideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+        
+        /* 通用右键菜单样式（与主应用保持一致） */
+        .universal-context-menu {
+            position: fixed;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 4px 0;
+            z-index: 9999999;
+            display: none;
+            min-width: 100px;
+            font-size: 14px;
+            pointer-events: auto;
+        }
+        
+        .universal-context-menu.show {
+            display: block;
+        }
+        
+        .universal-context-item {
+            padding: 6px 12px;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .universal-context-item:hover {
+            background-color: #f0f0f0;
+        }
+        
+        .universal-context-item:active {
+            background-color: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="variant-container">
+        <div class="variant-list" id="variantList">
+            <!-- 变形话术列表将在这里动态生成 -->
+        </div>
+        
+        <div class="add-variant-card" id="addVariantBtn">
+            <div class="text">添加新的变形话术</div>
+        </div>
+    </div>
+    
+    <!-- 编辑/添加模态框 -->
+    <div class="edit-modal" id="editModal">
+        <div class="edit-modal-content">
+            <div class="edit-modal-header" id="editModalTitle">编辑变形话术</div>
+            <div class="edit-modal-body">
+                <textarea id="editTextarea" placeholder="请输入话术内容..."></textarea>
+            </div>
+            <div class="edit-modal-footer">
+                <button class="modal-btn cancel" id="cancelEditBtn">取消</button>
+                <button class="modal-btn confirm" id="confirmEditBtn">保存</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 不使用 db.js，直接在页面内管理数据
+        let variants = [];
+        let currentEditingIndex = null;
+        let parentPhraseId = null;
+        
+        // 从URL参数获取父话术ID（用于存储key）
+        const urlParams = new URLSearchParams(window.location.search);
+        parentPhraseId = urlParams.get('parent_id') || 'default';
+        
+        const STORAGE_KEY = `variants_${parentPhraseId}`;
+        
+        // ==================== 通用右键菜单（与主应用保持一致）====================
+        let universalContextMenu = null;
+        let currentContextTarget = null;
+        
+        // 从 Python 桥读取剪贴板文本（与主应用保持一致）
+        function callPythonGetText() {
+            return new Promise((resolve) => {
+                try {
+                    if (!window.pythonBridge || typeof window.pythonBridge.get_text !== 'function') {
+                        return resolve(null);
+                    }
+                    const fn = window.pythonBridge.get_text;
+                    // QWebChannel 生成的方法通常接受 (callback)
+                    if (fn.length >= 1) {
+                        fn.call(window.pythonBridge, (text) => resolve(text || ""));
+                    } else {
+                        // 某些实现可能直接返回字符串
+                        const ret = fn.call(window.pythonBridge);
+                        resolve(ret || "");
+                    }
+                } catch (_) {
+                    resolve(null);
+                }
+            });
+        }
+        
+        // 通用剪贴板读取函数（优先调用 Python 桥，兼容 PyQt6 WebEngine）
+        async function readFromClipboard() {
+            // 方法0: 优先通过 Python 桥读取，最可靠（等待桥接就绪，最多重试10次）
+            try {
+                for (let i = 0; i < 10; i++) {
+                    if (window.pythonBridge && typeof window.pythonBridge.get_text === 'function') {
+                        const text = await callPythonGetText();
+                        if (text !== null) {
+                            console.log('[LOG] 通过 Python 桥读取剪贴板成功，长度:', text.length);
+                            return text;
+                        }
+                        break; // 桥接在，但读取失败，跳过后续重试
+                    }
+                    await new Promise(r => setTimeout(r, 50));
+                }
+            } catch (e) {
+                console.log('[LOG] Python 桥读取失败，尝试 Clipboard API:', e);
+            }
+
+            // 方法1: 现代 Clipboard API
+            if (navigator.clipboard && navigator.clipboard.readText) {
+                try {
+                    const text = await navigator.clipboard.readText();
+                    console.log('[LOG] 通过 Clipboard API 读取剪贴板成功，长度:', text ? text.length : 0);
+                    return text || "";
+                } catch (error) {
+                    console.log('[LOG] Clipboard API 读取失败:', error);
+                }
+            }
+            
+            // 无法读取剪贴板
+            console.warn('[LOG] 所有剪贴板读取方法都失败');
+            return null;
+        }
+        
+        // 创建通用右键菜单
+        function createUniversalContextMenu() {
+            if (universalContextMenu) return universalContextMenu;
+            
+            const menu = document.createElement('div');
+            menu.id = 'universalContextMenu';
+            menu.className = 'universal-context-menu';
+            menu.innerHTML = `
+                <div class="universal-context-item" data-command="copy">
+                    <span>📋 复制</span>
+                </div>
+                <div class="universal-context-item" data-command="paste">
+                    <span>📄 粘贴</span>
+                </div>
+                <div class="universal-context-item" data-command="cut">
+                    <span>✂️ 剪切</span>
+                </div>
+            `;
+            
+            document.body.appendChild(menu);
+            
+            // 绑定菜单项点击事件
+            menu.addEventListener('click', async (e) => {
+                const item = e.target.closest('.universal-context-item');
+                if (!item || !currentContextTarget) return;
+                
+                const command = item.dataset.command;
+                e.stopPropagation();
+                
+                try {
+                    // 确保目标元素获得焦点
+                    currentContextTarget.focus();
+                    
+                    if (command === 'copy') {
+                        // 复制
+                        const success = document.execCommand('copy', false, null);
+                        if (!success) {
+                            // 备用方案：使用 Clipboard API
+                            const selection = window.getSelection();
+                            if (selection && selection.toString()) {
+                                await navigator.clipboard.writeText(selection.toString());
+                            } else if (currentContextTarget.value) {
+                                await navigator.clipboard.writeText(currentContextTarget.value);
+                            }
+                        }
+                        console.log('[LOG] ✅ 通用右键菜单：已复制');
+                        
+                    } else if (command === 'paste') {
+                        // 粘贴（使用与主应用完全相同的逻辑，优先使用 Python Bridge）
+                        try {
+                            // 使用 readFromClipboard 函数，优先通过 Python Bridge 读取
+                            const text = await readFromClipboard();
+                            if (text) {
+                                // 对于 input 和 textarea
+                                if (currentContextTarget.tagName === 'INPUT' || currentContextTarget.tagName === 'TEXTAREA') {
+                                    const start = currentContextTarget.selectionStart;
+                                    const end = currentContextTarget.selectionEnd;
+                                    const value = currentContextTarget.value;
+                                    currentContextTarget.value = value.substring(0, start) + text + value.substring(end);
+                                    currentContextTarget.selectionStart = currentContextTarget.selectionEnd = start + text.length;
+                                    
+                                    // 触发 input 事件
+                                    const inputEvent = new Event('input', { bubbles: true });
+                                    currentContextTarget.dispatchEvent(inputEvent);
+                                } else {
+                                    // 对于 contenteditable 元素
+                                    document.execCommand('insertText', false, text);
+                                }
+                                console.log('[LOG] ✅ 通用右键菜单：已粘贴');
+                            } else {
+                                console.warn('[LOG] 剪贴板为空或读取失败');
+                            }
+                        } catch (err) {
+                            console.error('[LOG] 通用右键菜单粘贴失败:', err);
+                            // 备用方案：使用 execCommand
+                            try {
+                                document.execCommand('paste', false, null);
+                            } catch (execErr) {
+                                console.error('[LOG] execCommand 粘贴也失败:', execErr);
+                            }
+                        }
+                        
+                    } else if (command === 'cut') {
+                        // 剪切
+                        const success = document.execCommand('cut', false, null);
+                        if (!success) {
+                            // 备用方案：手动实现
+                            let textToCut = '';
+                            if (currentContextTarget.tagName === 'INPUT' || currentContextTarget.tagName === 'TEXTAREA') {
+                                const start = currentContextTarget.selectionStart;
+                                const end = currentContextTarget.selectionEnd;
+                                if (start !== end) {
+                                    textToCut = currentContextTarget.value.substring(start, end);
+                                    currentContextTarget.value = currentContextTarget.value.substring(0, start) + currentContextTarget.value.substring(end);
+                                    currentContextTarget.selectionStart = currentContextTarget.selectionEnd = start;
+                                }
+                            } else {
+                                const selection = window.getSelection();
+                                if (selection && selection.toString()) {
+                                    textToCut = selection.toString();
+                                    selection.deleteFromDocument();
+                                }
+                            }
+                            
+                            if (textToCut) {
+                                await navigator.clipboard.writeText(textToCut);
+                                // 触发 input 事件
+                                const inputEvent = new Event('input', { bubbles: true });
+                                currentContextTarget.dispatchEvent(inputEvent);
+                            }
+                        }
+                        console.log('[LOG] ✅ 通用右键菜单：已剪切');
+                    }
+                } catch (error) {
+                    console.error('[LOG] 通用右键菜单操作失败:', command, error);
+                }
+                
+                hideUniversalContextMenu();
+            });
+            
+            universalContextMenu = menu;
+            return menu;
+        }
+        
+        // 显示通用右键菜单
+        function showUniversalContextMenu(x, y, target) {
+            if (!universalContextMenu) {
+                createUniversalContextMenu();
+            }
+            
+            currentContextTarget = target;
+            
+            // 先临时显示菜单以获取尺寸
+            universalContextMenu.style.left = x + 'px';
+            universalContextMenu.style.top = y + 'px';
+            universalContextMenu.classList.add('show');
+            
+            // 获取菜单尺寸和窗口尺寸
+            const menuRect = universalContextMenu.getBoundingClientRect();
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            
+            // 智能位置调整：优先避免遮挡选中文本
+            let adjustedX = x + 10; // 默认向右偏移10px避免遮挡
+            let adjustedY = y + 3;  // 默认向下偏移3px
+            
+            // 检查右边界，如果超出则尝试左侧显示
+            if (adjustedX + menuRect.width > windowWidth) {
+                // 尝试显示在左侧
+                const leftX = x - menuRect.width - 10;
+                if (leftX >= 10) {
+                    adjustedX = leftX; // 左侧有足够空间
+                } else {
+                    adjustedX = windowWidth - menuRect.width - 10; // 贴右边界
+                }
+            }
+            
+            // 确保不超出左边界
+            if (adjustedX < 10) {
+                adjustedX = 10;
+            }
+            
+            // 检查下边界，如果超出则尝试上方显示
+            if (adjustedY + menuRect.height > windowHeight) {
+                // 尝试显示在上方
+                const topY = y - menuRect.height - 3;
+                if (topY >= 10) {
+                    adjustedY = topY; // 上方有足够空间
+                } else {
+                    adjustedY = windowHeight - menuRect.height - 10; // 贴下边界
+                }
+            }
+            
+            // 确保不超出上边界
+            if (adjustedY < 10) {
+                adjustedY = 10;
+            }
+            
+            // 应用调整后的位置
+            universalContextMenu.style.left = adjustedX + 'px';
+            universalContextMenu.style.top = adjustedY + 'px';
+        }
+        
+        // 隐藏通用右键菜单
+        function hideUniversalContextMenu() {
+            if (universalContextMenu) {
+                universalContextMenu.classList.remove('show');
+            }
+            currentContextTarget = null;
+        }
+        
+        // 初始化
+        function init() {
+            // 从 localStorage 加载数据
+            loadFromStorage();
+            renderVariants();
+            
+            // 绑定添加按钮
+            document.getElementById('addVariantBtn').addEventListener('click', openAddModal);
+            
+            // 绑定编辑模态框按钮
+            document.getElementById('cancelEditBtn').addEventListener('click', closeEditModal);
+            document.getElementById('confirmEditBtn').addEventListener('click', saveEdit);
+            
+            // 点击模态框背景关闭
+            document.getElementById('editModal').addEventListener('click', (e) => {
+                if (e.target.id === 'editModal') {
+                    closeEditModal();
+                }
+            });
+            
+            // 为 textarea 添加通用右键菜单
+            const textarea = document.getElementById('editTextarea');
+            textarea.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                showUniversalContextMenu(e.pageX, e.pageY, textarea);
+            });
+            
+            // 点击其他地方隐藏菜单
+            document.addEventListener('click', (e) => {
+                if (universalContextMenu && !universalContextMenu.contains(e.target)) {
+                    hideUniversalContextMenu();
+                }
+            }, true);
+            
+            // 右键菜单外的鼠标按下也隐藏菜单
+            document.addEventListener('mousedown', (e) => {
+                if (universalContextMenu && !universalContextMenu.contains(e.target)) {
+                    hideUniversalContextMenu();
+                }
+            }, true);
+            
+            // 页面滚动时隐藏菜单
+            document.addEventListener('scroll', hideUniversalContextMenu, true);
+            
+            // 窗口大小变化时隐藏菜单
+            window.addEventListener('resize', hideUniversalContextMenu);
+            
+            // 键盘按下时隐藏菜单（如ESC键）
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    hideUniversalContextMenu();
+                }
+            });
+        }
+        
+        // 从 localStorage 加载
+        function loadFromStorage() {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    variants = JSON.parse(stored);
+                }
+            } catch (error) {
+                console.error('加载数据失败:', error);
+                variants = [];
+            }
+        }
+        
+        // 保存到 localStorage
+        function saveToStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(variants));
+            } catch (error) {
+                console.error('保存数据失败:', error);
+            }
+        }
+        
+        // 渲染变形列表
+        function renderVariants() {
+            const listContainer = document.getElementById('variantList');
+            
+            if (variants.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📝</div>
+                        <div class="text">还没有变形话术，点击下方按钮添加第一个</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            listContainer.innerHTML = variants.map((variant, index) => `
+                <div class="variant-card" data-index="${index}">
+                    <div class="variant-content">${escapeHtml(variant.content)}</div>
+                    <div class="variant-actions">
+                        <button class="variant-btn edit-btn" data-index="${index}">编辑</button>
+                        <button class="variant-btn delete-btn" data-index="${index}">删除</button>
+                    </div>
+                </div>
+            `).join('');
+            
+            // 为每个卡片绑定事件
+            listContainer.querySelectorAll('.variant-card').forEach(card => {
+                const index = parseInt(card.dataset.index);
+                
+                // 根据内容是否多行决定按钮垂直位置：多行时把按钮放到底部，单行时垂直居中
+                try {
+                    const contentEl = card.querySelector('.variant-content');
+                    if (contentEl) {
+                        // scrollHeight > clientHeight 表明存在溢出换行
+                        const isMultiline = contentEl.scrollHeight > contentEl.clientHeight + 1;
+                        if (isMultiline) {
+                            card.classList.add('multiline');
+                        } else {
+                            card.classList.remove('multiline');
+                        }
+                    }
+                } catch (e) {
+                    // ignore measurement errors
+                }
+                
+                // 统一用 JS 控制悬停态，避免某些环境下 :hover 兼容问题
+                card.addEventListener('mouseenter', () => {
+                    card.classList.add('hovering');
+                });
+                card.addEventListener('mouseleave', () => {
+                    card.classList.remove('hovering');
+                });
+                
+                // 点击卡片复制（但点击按钮时不触发）
+                card.addEventListener('mousedown', async (e) => {
+                    // 如果点击的是按钮，不触发复制
+                    if (e.target.classList.contains('variant-btn')) {
+                        return;
+                    }
+                    // 防重复：200ms 内忽略重复触发
+                    const now = Date.now();
+                    const lastAt = parseInt(card.dataset.lastActivateAt || '0', 10);
+                    if (now - lastAt < 200) return;
+                    card.dataset.lastActivateAt = String(now);
+                    
+                    const variant = variants[index];
+                    if (variant) {
+                        const success = await copyToClipboard(variant.content);
+                        if (success) {
+                            showToast('已复制');
+                        } else {
+                            showToast('❌ 复制失败', 'error');
+                        }
+                    }
+                });
+                
+                // 编辑按钮事件
+                const editBtn = card.querySelector('.edit-btn');
+                if (editBtn) {
+                    editBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        editVariant(index);
+                    });
+                }
+                
+                // 删除按钮事件
+                const deleteBtn = card.querySelector('.delete-btn');
+                if (deleteBtn) {
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        deleteVariant(index);
+                    });
+                }
+            });
+        }
+        
+        // 打开添加模态框
+        function openAddModal() {
+            currentEditingIndex = null;
+            document.getElementById('editModalTitle').textContent = '添加变形话术';
+            document.getElementById('editTextarea').value = '';
+            document.getElementById('editModal').classList.add('show');
+            document.getElementById('editTextarea').focus();
+        }
+        
+        // 添加变形
+        function addVariant() {
+            const newContent = document.getElementById('editTextarea').value.trim();
+            if (!newContent) {
+                alert('内容不能为空');
+                return;
+            }
+            
+            variants.push({
+                content: newContent,
+                createdAt: new Date().toISOString()
+            });
+            
+            saveToStorage();
+            renderVariants();
+            closeEditModal();
+            showToast('✅ 变形话术已添加');
+        }
+        
+        // 复制变形
+        async function copyVariant(index) {
+            const variant = variants[index];
+            if (!variant) return;
+            
+            const success = await copyToClipboard(variant.content);
+            if (success) {
+                    showToast('✅ 已复制到剪贴板');
+            } else {
+                showToast('❌ 复制失败', 'error');
+            }
+        }
+        
+        // 复制到剪贴板（优先使用Python Bridge）
+        async function copyToClipboard(text) {
+            // 方法0: 优先通过 Python 桥复制，最可靠（等待桥接就绪，最多重试10次）
+            try {
+                for (let i = 0; i < 10; i++) {
+                    if (window.pythonBridge && typeof window.pythonBridge.copy_text === 'function') {
+                        try {
+                            const ok = await callPythonCopy(text);
+                            if (ok) return true;
+                            break; // 桥接在，但复制失败，跳过后续重试
+                        } catch (e) {
+                            // 继续尝试后续方法
+                            break;
+                        }
+                    }
+                    await new Promise(r => setTimeout(r, 50));
+                }
+            } catch (e) {
+                // 忽略并继续尝试后续方法
+            }
+
+            // 方法1: 现代 Clipboard API
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    return true;
+                } catch (error) {
+                    // 继续尝试备用方法
+                }
+            }
+            
+            // 方法2: document.execCommand
+            try {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+                textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.select();
+                const success = document.execCommand('copy');
+                document.body.removeChild(textarea);
+                return success;
+            } catch (error) {
+                return false;
+            }
+        }
+        
+        // 调用Python Bridge复制
+        function callPythonCopy(text) {
+            return new Promise((resolve) => {
+                try {
+                    if (!window.pythonBridge || typeof window.pythonBridge.copy_text !== 'function') {
+                        resolve(false);
+                        return;
+            }
+                    
+                    const fn = window.pythonBridge.copy_text;
+                    // 尝试异步调用（带回调）
+                    if (fn.length >= 2) {
+                        fn.call(window.pythonBridge, text, (ok) => resolve(!!ok));
+                    } else {
+                        // 同步调用
+                        try {
+                            const ret = fn.call(window.pythonBridge, text);
+                            resolve(!!ret);
+                        } catch (e) {
+                            resolve(false);
+                        }
+                    }
+                } catch (e) {
+                    resolve(false);
+                }
+            });
+        }
+        
+        // 编辑变形
+        function editVariant(index) {
+            const variant = variants[index];
+            if (!variant) return;
+            
+            currentEditingIndex = index;
+            document.getElementById('editModalTitle').textContent = '编辑变形话术';
+            document.getElementById('editTextarea').value = variant.content;
+            document.getElementById('editModal').classList.add('show');
+            document.getElementById('editTextarea').focus();
+        }
+        
+        // 保存编辑
+        function saveEdit() {
+            const newContent = document.getElementById('editTextarea').value.trim();
+            if (!newContent) {
+                alert('内容不能为空');
+                return;
+            }
+            
+            if (currentEditingIndex !== null) {
+                // 编辑模式
+                variants[currentEditingIndex].content = newContent;
+                saveToStorage();
+                renderVariants();
+                closeEditModal();
+                showToast('✅ 保存成功');
+            } else {
+                // 添加模式
+                addVariant();
+            }
+        }
+        
+        // 关闭编辑模态框
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('show');
+            currentEditingIndex = null;
+        }
+        
+        // 删除变形
+        function deleteVariant(index) {
+            if (!confirm('确定要删除这条变形话术吗？')) return;
+            
+            variants.splice(index, 1);
+            saveToStorage();
+            renderVariants();
+            showToast('✅ 已删除');
+        }
+        
+        // HTML转义
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // 显示提示
+        function showToast(message, type = 'success') {
+            // 复用单例，避免短时间内出现两个提示造成"卡跳"视觉
+            if (!window.__toastEl) {
+                window.__toastEl = document.createElement('div');
+                window.__toastEl.className = 'toast';
+                document.body.appendChild(window.__toastEl);
+            }
+            const el = window.__toastEl;
+            // 重置状态
+            el.className = 'toast';
+            if (type) el.classList.add(`toast-${type}`);
+            el.textContent = message;
+            el.style.opacity = '1';
+            el.style.transform = 'translateX(0)';
+
+            // 清理旧计时器
+            if (window.__toastTimer) {
+                clearTimeout(window.__toastTimer);
+                window.__toastTimer = null;
+            }
+            // 显示时长
+            window.__toastTimer = setTimeout(() => {
+                el.classList.add('toast-hide');
+            }, 2000);
+        }
+        
+        // 启动
+        init();
+    </script>
+</body>
+</html>

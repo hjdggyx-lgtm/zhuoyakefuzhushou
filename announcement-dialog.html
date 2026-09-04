@@ -1,0 +1,1482 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>公告解读</title>
+    <!-- 立即应用防闪烁样式，在页面渲染前就生效 -->
+    <style id="anti-flash-style">
+        /* 立即禁用所有元素的边框和轮廓 - 最高优先级 */
+        * {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+        *:hover, *:focus, *:active, *:focus-visible, *:focus-within {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+        /* 右键菜单允许显示边框 */
+        .context-menu, .context-menu:hover, .context-menu:focus, .context-menu:active {
+            border: 0.5px solid #c0c0c0 !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+        }
+        /* 暗色主题右键菜单边框 */
+        body.dark-theme .context-menu, body.dark-theme .context-menu:hover, body.dark-theme .context-menu:focus, body.dark-theme .context-menu:active {
+            border: 0.5px solid #7a8a9f !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+        }
+        /* 右键菜单内部元素不显示边框 */
+        .context-menu * {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+    </style>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: #f5f5f5;
+            overflow: hidden;
+            border: 0 !important;
+            margin: 0;
+            padding: 0;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .announcement-container {
+            width: 100%;
+            height: 100vh;
+            background: #ffffff;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 0 !important;
+            margin: 0;
+            padding: 0;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .announcement-header {
+            padding: 12px 16px 8px 16px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+        }
+
+        .announcement-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .close-btn {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            color: #666;
+            transition: all 0.2s;
+        }
+
+        .close-btn:hover {
+            background: #e5e5e5;
+            border-color: #ccc;
+        }
+
+        .announcement-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .input-section {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e0e0e0;
+            background: #fafafa;
+        }
+
+        .input-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .input-textarea {
+            width: 100%;
+            height: 140px;
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 13px;
+            line-height: 1.4;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-textarea:focus {
+            border-color: #0078d4;
+        }
+
+        .input-select {
+            width: 100%;
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 14px;
+            color: #333;
+            background: white;
+            outline: none;
+            transition: border-color 0.2s;
+            margin-bottom: 10px;
+        }
+
+        .input-select:focus {
+            border-color: #0078d4;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .button-row .parse-btn {
+            flex: 1;
+        }
+
+        .parse-btn {
+            padding: 6px 12px;
+            background: #0078d4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .parse-btn:hover {
+            background: #106ebe;
+        }
+
+        .parse-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .result-section {
+            flex: 1;
+            padding: 12px 16px;
+            overflow-y: auto;
+            background: white;
+        }
+
+        .result-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .result-item {
+            margin-bottom: 12px;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            background: #fafafa;
+        }
+
+        .result-item-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #0078d4;
+            margin-bottom: 6px;
+        }
+
+        .result-item-content {
+            font-size: 13px;
+            color: #555;
+            line-height: 1.5;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-can-refund {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-no-refund {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .time-countdown {
+            background: #fff3cd;
+            color: #856404;
+            padding: 6px 10px;
+            border-radius: 6px;
+            margin-top: 8px;
+            font-size: 12px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        /* 滚动条样式 */
+        .result-section::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .result-section::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 4px;
+        }
+
+        .result-section::-webkit-scrollbar-thumb:hover {
+            background: #aaa;
+        }
+
+        /* 暗色主题支持 */
+        body.dark-theme {
+            background: #1e1e1e;
+        }
+
+        body.dark-theme .announcement-container {
+            background: #2d2d2d;
+        }
+
+        body.dark-theme .announcement-header,
+        body.dark-theme .result-section {
+            background: #2d2d2d;
+            border-color: #404040;
+        }
+
+        body.dark-theme .announcement-title {
+            color: #e0e0e0;
+        }
+
+        body.dark-theme .input-section {
+            background: #252525;
+        }
+
+        body.dark-theme .input-label {
+            color: #e0e0e0;
+        }
+
+        body.dark-theme .input-textarea {
+            background: #3a3a3a;
+            border-color: #555;
+            color: #e0e0e0;
+        }
+
+        body.dark-theme .input-textarea:focus {
+            border-color: #0078d4;
+        }
+
+        body.dark-theme .result-item {
+            background: #252525;
+            border-color: #404040;
+        }
+
+        body.dark-theme .result-item-title {
+            color: #4dabf7;
+        }
+
+        body.dark-theme .result-item-content {
+            color: #cccccc;
+        }
+
+        body.dark-theme .close-btn {
+            background: #404040;
+            border-color: #555;
+            color: #cccccc;
+        }
+
+        body.dark-theme .close-btn:hover {
+            background: #4a4a4a;
+        }
+
+        /* 手动编辑模式样式 */
+        .manual-editor {
+            max-width: 600px;
+        }
+
+        .manual-section {
+            margin-bottom: 12px;
+        }
+
+        .manual-section label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 6px;
+        }
+
+        .manual-section select,
+        .manual-section textarea {
+            width: 100%;
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 13px;
+            color: #333;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .manual-section select:focus,
+        .manual-section textarea:focus {
+            border-color: #0078d4;
+        }
+
+        .manual-section textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        /* 暗色主题 */
+        body.dark-theme .manual-section label {
+            color: #e0e0e0;
+        }
+
+        body.dark-theme .manual-section select,
+        body.dark-theme .manual-section textarea {
+            background: #3a3a3a;
+            border-color: #555;
+            color: #e0e0e0;
+        }
+
+        body.dark-theme .manual-section select:focus,
+        body.dark-theme .manual-section textarea:focus {
+            border-color: #0078d4;
+        }
+    </style>
+</head>
+<body>
+    <div class="announcement-container">
+        <div class="announcement-header">
+            <div class="announcement-title">📢 退票公告解析器</div>
+            <button class="close-btn" onclick="closeDialog()">✕</button>
+        </div>
+
+        <div class="announcement-content">
+            <div class="input-section">
+                <label class="input-label">公告类型选择</label>
+                <select class="input-select" id="announcementType" onchange="onTypeChange()">
+                    <option value="">请选择公告类型...</option>
+                    <option value="refund">退票规则公告</option>
+                    <option value="change">演出变更公告</option>
+                    <option value="cancel">演出取消公告</option>
+                    <option value="delay">演出延期公告</option>
+                    <option value="other">其他公告</option>
+                </select>
+
+                <label class="input-label" style="margin-top: 15px;">退票公告文本</label>
+                <textarea
+                    class="input-textarea"
+                    id="announcementInput"
+                    placeholder="请粘贴退票公告文本..."
+                ></textarea>
+
+                <div class="button-row">
+                    <button class="parse-btn" id="parseBtn" onclick="parseAnnouncement()">🔍 智能解析</button>
+                    <button class="parse-btn" id="manualBtn" onclick="showManualMode()" style="background: #666;">✏️ 手动编辑</button>
+                </div>
+            </div>
+
+            <div class="result-section">
+                <div class="result-title">📋 解析结果</div>
+                <div id="resultsContainer">
+                    <div class="empty-state">
+                        请在上方输入退票公告文本，然后点击"解析公告"按钮
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局错误处理
+        window.addEventListener('error', function(event) {
+            console.error('[LOG] 全局错误捕获:', event.error);
+            console.error('[LOG] 错误信息:', event.message);
+            console.error('[LOG] 错误文件:', event.filename);
+            console.error('[LOG] 错误行号:', event.lineno);
+            return true;
+        });
+
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('[LOG] 未处理的 Promise 拒绝:', event.reason);
+            event.preventDefault();
+        });
+
+        // 关闭对话框函数
+        function closeDialog() {
+            if (window.pythonBridge && typeof window.pythonBridge.closeWindow === 'function') {
+                window.pythonBridge.closeWindow();
+            } else {
+                window.close();
+            }
+        }
+
+        // 公告类型改变处理
+        function onTypeChange() {
+            const type = document.getElementById('announcementType').value;
+            const textarea = document.getElementById('announcementInput');
+
+            // 根据类型更新占位符
+            const placeholders = {
+                'refund': '请粘贴退票规则公告文本，包含退票时间、手续费等信息...',
+                'change': '请粘贴演出变更公告文本，包含变更内容、退票政策等信息...',
+                'cancel': '请粘贴演出取消公告文本，包含退票政策等信息...',
+                'delay': '请粘贴演出延期公告文本，包含新时间、退票政策等信息...',
+                'other': '请粘贴其他类型公告文本...'
+            };
+
+            textarea.placeholder = placeholders[type] || '请粘贴退票公告文本...';
+        }
+
+        // 显示手动编辑模式
+        function showManualMode() {
+            const resultsContainer = document.getElementById('resultsContainer');
+
+            resultsContainer.innerHTML = `
+                <div class="manual-editor">
+                    <div class="manual-section">
+                        <label>结论状态</label>
+                        <select id="manualConclusion" onchange="updateReplyText()">
+                            <option value="可免费退">可免费退</option>
+                            <option value="可退（手续费）">可退（手续费）</option>
+                            <option value="不可退">不可退</option>
+                            <option value="需人工确认">需人工确认</option>
+                        </select>
+                    </div>
+
+                    <div class="manual-section">
+                        <label>手续费类型（如果需要）</label>
+                        <select id="manualFeeType" onchange="updateReplyText()">
+                            <option value="">无手续费</option>
+                            <option value="0.6%">0.6%</option>
+                            <option value="20%">20%</option>
+                            <option value="20.6%">20.6%</option>
+                            <option value="30%">30%</option>
+                            <option value="50%">50%</option>
+                        </select>
+                    </div>
+
+                    <div class="manual-section">
+                        <label>客服回复话术</label>
+                        <textarea id="manualReply" rows="3" placeholder="请输入客服回复话术..."></textarea>
+                    </div>
+
+                    <div class="manual-section">
+                        <label>重要信息备注</label>
+                        <textarea id="manualNotes" rows="2" placeholder="记录重要信息，如特殊规则、时间限制等..."></textarea>
+                    </div>
+
+                    <button class="parse-btn" onclick="saveManualResult()">💾 保存结果</button>
+                </div>
+            `;
+        }
+
+        // 更新回复文本
+        function updateReplyText() {
+            const conclusion = document.getElementById('manualConclusion').value;
+            const feeType = document.getElementById('manualFeeType').value;
+            const replyTextarea = document.getElementById('manualReply');
+
+            const replyTemplates = {
+                '可免费退': '亲亲，帮您查询该项目在 XX 至 XX 时间内支持免费退票，您可在订单详情点击【申请退款】操作哦～',
+                '可退（手续费）': `亲亲，帮您查询该项目目前支持退票，但需收取 ${feeType} 手续费，退票截止至 XX，请您在订单详情点击【申请退款】操作～`,
+                '不可退': '亲亲，帮您查询该项目已超过退票时间，根据主办方规则目前不支持退票，感谢您的理解～',
+                '需人工确认': '亲亲，该项目退票规则存在时间或场次差异，为避免误导，已建议人工进一步核实，请您稍等～'
+            };
+
+            replyTextarea.value = replyTemplates[conclusion] || '';
+        }
+
+        // 保存手动编辑结果
+        function saveManualResult() {
+            const conclusion = document.getElementById('manualConclusion').value;
+            const feeType = document.getElementById('manualFeeType').value;
+            const reply = document.getElementById('manualReply').value;
+            const notes = document.getElementById('manualNotes').value;
+
+            let finalConclusion = conclusion;
+            let color = '#2e7d32'; // 默认绿色
+
+            if (conclusion === '可退（手续费）') {
+                finalConclusion = `可退（${feeType}手续费）`;
+            } else if (conclusion === '不可退') {
+                color = '#d32f2f'; // 红色
+            } else if (conclusion === '需人工确认') {
+                color = '#f57c00'; // 橙色
+            }
+
+            const results = {
+                conclusion: finalConclusion,
+                conclusionColor: color,
+                tableData: {},
+                customerReply: reply,
+                risks: notes ? [notes] : []
+            };
+
+            displayResults(results);
+        }
+
+        // 调试解析函数
+        function debugParse() {
+            const input = document.getElementById('announcementInput');
+            const resultsContainer = document.getElementById('resultsContainer');
+            const text = input.value.trim();
+
+            const tableData = parseRefundRulesTable(text);
+            const refundRules = [];
+
+            if (tableData['免费退时间']) {
+                refundRules.push({
+                    type: 'free',
+                    timeRange: tableData['免费退时间'],
+                    fee: '免费'
+                });
+            }
+
+            const feeTypes = ['0.6%', '20%', '20.6%', '30%', '50%'];
+            feeTypes.forEach(fee => {
+                const key = `${fee}手续费退票时间`;
+                if (tableData[key]) {
+                    refundRules.push({
+                        type: 'fee',
+                        timeRange: tableData[key],
+                        fee: fee
+                    });
+                }
+            });
+
+            const now = new Date();
+            let debugInfo = `当前时间: ${now.toLocaleString()}\n\n`;
+            debugInfo += `解析的表格数据:\n${JSON.stringify(tableData, null, 2)}\n\n`;
+
+            // 检查是否存在特殊时间规则（如付款成功后X小时内）
+            const allTimeValues = [
+                tableData['免费退时间'],
+                tableData['0.6%手续费退票时间'],
+                tableData['20%手续费退票时间'],
+                tableData['20.6%手续费退票时间'],
+                tableData['30%手续费退票时间'],
+                tableData['50%手续费退票时间']
+            ];
+
+            const hasSpecialTimeRule = allTimeValues.some(timeValue =>
+                timeValue && timeValue.includes('付款成功后')
+            );
+
+            // console.log('是否存在特殊时间规则:', hasSpecialTimeRule);
+            // console.log('收集的退票规则:', refundRules);
+
+            // 模拟determineConclusion的逻辑
+            let currentValidRule = null;
+            let futureValidRule = null;
+            let allRulesExpired = true;
+
+            refundRules.forEach((rule, index) => {
+                const status = getTimeRangeStatus(rule.timeRange, now);
+                debugInfo += `规则${index + 1} (${rule.fee}): ${rule.timeRange} → ${status}\n`;
+
+                if (status === 'current') {
+                    currentValidRule = rule;
+                    allRulesExpired = false;
+                } else if (status === 'future') {
+                    if (!futureValidRule || rule.type === 'free') {
+                        // 优先选择免费退规则
+                        futureValidRule = rule;
+                    }
+                    allRulesExpired = false;
+                } else if (status === 'expired') {
+                    // 仍然标记为未过期，因为可能有其他规则
+                }
+            });
+
+            debugInfo += `\n逻辑判断结果:\n`;
+            debugInfo += `currentValidRule: ${currentValidRule ? `${currentValidRule.fee} (${currentValidRule.timeRange})` : 'null'}\n`;
+            debugInfo += `futureValidRule: ${futureValidRule ? `${futureValidRule.fee} (${futureValidRule.timeRange})` : 'null'}\n`;
+            debugInfo += `allRulesExpired: ${allRulesExpired}\n`;
+
+            let conclusion = '';
+            if (currentValidRule) {
+                conclusion = `可退（${currentValidRule.type === 'free' ? '免费' : currentValidRule.fee + '手续费'}）`;
+            } else if (futureValidRule) {
+                conclusion = `可退（${futureValidRule.type === 'free' ? '免费' : futureValidRule.fee + '手续费'}）`;
+            } else if (allRulesExpired) {
+                conclusion = '不可退';
+            } else {
+                conclusion = '需人工确认';
+            }
+
+            debugInfo += `预期结论: ${conclusion}\n`;
+
+            resultsContainer.innerHTML = `<div style="white-space: pre-wrap; font-family: monospace; background: #f5f5f5; padding: 15px; border-radius: 8px; margin-top: 15px; max-height: 400px; overflow-y: auto;">${debugInfo}</div>`;
+        }
+
+        // 解析公告的主要函数
+        // 根据公告类型解析
+        function analyzeAnnouncementByType(text, type) {
+            const results = {
+                conclusion: '',
+                conclusionColor: '',
+                tableData: {},
+                customerReply: '',
+                risks: []
+            };
+
+            // 根据公告类型使用不同的解析策略
+            switch (type) {
+                case 'refund':
+                    return analyzeRefundAnnouncement(text);
+                case 'change':
+                case 'cancel':
+                case 'delay':
+                    results.conclusion = '需人工确认';
+                    results.conclusionColor = '#f57c00';
+                    results.customerReply = '亲亲，该项目有变更/取消/延期情况，已建议人工进一步核实退票政策，请您稍等～';
+                    return results;
+                default:
+                    results.conclusion = '需人工确认';
+                    results.conclusionColor = '#f57c00';
+                    results.customerReply = '亲亲，该公告类型暂不支持自动解析，已建议人工核实，请您稍等～';
+                    return results;
+            }
+        }
+
+        // 简化的退票公告解析
+        function analyzeRefundAnnouncement(text) {
+            const results = {
+                conclusion: '',
+                conclusionColor: '',
+                tableData: {},
+                customerReply: '',
+                risks: []
+            };
+
+            // 1. 检查不可退关键词
+            if (checkNonRefundKeywords(text)) {
+                results.conclusion = '不可退';
+                results.conclusionColor = '#d32f2f';
+                results.customerReply = '亲亲，帮您查询该项目已超过退票时间，根据主办方规则目前不支持退票，感谢您的理解～';
+                return results;
+            }
+
+            // 2. 提取退票规则（简化版）
+            const tableData = extractBasicRefundRules(text);
+            results.tableData = tableData;
+
+            // 3. 简单的时间判断
+            const now = new Date();
+            const hasFreeRefund = tableData['免费退时间'] && isTimeRangeValid(tableData['免费退时间'], now);
+            const hasFeeRefund = Object.keys(tableData).some(key => key.includes('%') && tableData[key]);
+
+            if (hasFreeRefund) {
+                results.conclusion = '可免费退';
+                results.conclusionColor = '#2e7d32';
+                results.customerReply = '亲亲，帮您查询该项目在 XX 至 XX 时间内支持免费退票，您可在订单详情点击【申请退款】操作哦～';
+            } else if (hasFeeRefund) {
+                // 找到第一个手续费规则
+                const feeKeys = Object.keys(tableData).filter(key => key.includes('%') && tableData[key]);
+                if (feeKeys.length > 0) {
+                    const feeType = feeKeys[0].replace('手续费退票时间', '');
+                    results.conclusion = `可退（${feeType}手续费）`;
+                    results.conclusionColor = '#2e7d32';
+                    results.customerReply = `亲亲，帮您查询该项目目前支持退票，但需收取 ${feeType} 手续费，退票截止至 XX，请您在订单详情点击【申请退款】操作～`;
+                }
+            } else {
+                results.conclusion = '需人工确认';
+                results.conclusionColor = '#f57c00';
+                results.customerReply = '亲亲，该项目退票规则暂无法自动识别，已建议人工核实，请您稍等～';
+            }
+
+            return results;
+        }
+
+        // 提取基本退票规则
+        function extractBasicRefundRules(text) {
+            const tableData = {
+                '演出时间': '',
+                '场次日期': '',
+                '免费退时间': '',
+                '0.6%手续费退票时间': '',
+                '20%手续费退票时间': '',
+                '20.6%手续费退票时间': '',
+                '30%手续费退票时间': '',
+                '50%手续费退票时间': '',
+                '退票截止时间': ''
+            };
+
+            // 提取演出时间
+            const showTimeMatch = text.match(/演出时间[:：]\s*([^\n\r]+)/);
+            if (showTimeMatch) {
+                tableData['演出时间'] = showTimeMatch[1].trim();
+            }
+
+            // 提取场次日期
+            const sessionDateMatch = text.match(/场次日期[:：]\s*([^\n\r]+)/);
+            if (sessionDateMatch) {
+                tableData['场次日期'] = sessionDateMatch[1].trim();
+            }
+
+            // 解析退票规则
+            const lines = text.split('\n');
+            for (const line of lines) {
+                // 提取退票截止时间（不支持退票的时间点）
+                if (line.includes('退票截止时间')) {
+                    const deadlineMatch = line.match(/退票截止时间[:：]\s*([^\n\r]+)/);
+                    if (deadlineMatch) {
+                        tableData['退票截止时间'] = deadlineMatch[1].trim();
+                    }
+                }
+
+                // 处理包含时间范围的规则
+                if (line.includes('起至') && (line.includes('可免费退') || line.includes('收取'))) {
+                    if (line.includes('可免费退')) {
+                        // 免费退时间
+                        const timeMatch = line.match(/(\d{1,2})月(\d{1,2})日\s+(\d{1,2})(?::(\d{2}))?\s+起至\s+(\d{1,2})月(\d{1,2})日\s+(\d{1,2})(?::(\d{2}))?/);
+                        if (timeMatch) {
+                            const startMonth = timeMatch[1];
+                            const startDay = timeMatch[2];
+                            const startHour = timeMatch[3];
+                            const startMinute = timeMatch[4] || '00';
+                            const endMonth = timeMatch[5];
+                            const endDay = timeMatch[6];
+                            const endHour = timeMatch[7];
+                            const endMinute = timeMatch[8] || '00';
+                            const timeRange = `${startMonth}月${startDay}日 ${startHour}:${startMinute} 起至 ${endMonth}月${endDay}日 ${endHour}:${endMinute}`;
+                            tableData['免费退时间'] = timeRange;
+                        }
+                    } else if (line.includes('收取') && line.includes('%')) {
+                        // 手续费退票时间
+                        const feeMatch = line.match(/收取(\d+(?:\.\d+)?)%/);
+                        if (feeMatch) {
+                            const feePercent = feeMatch[1];
+                            const timeMatch = line.match(/(\d{1,2})月(\d{1,2})日\s+(\d{1,2})(?::(\d{2}))?\s+起至\s+(\d{1,2})月(\d{1,2})日\s+(\d{1,2})(?::(\d{2}))?/);
+                            if (timeMatch) {
+                                const startMonth = timeMatch[1];
+                                const startDay = timeMatch[2];
+                                const startHour = timeMatch[3];
+                                const startMinute = timeMatch[4] || '00';
+                                const endMonth = timeMatch[5];
+                                const endDay = timeMatch[6];
+                                const endHour = timeMatch[7];
+                                const endMinute = timeMatch[8] || '00';
+                                const timeRange = `${startMonth}月${startDay}日 ${startHour}:${startMinute} 起至 ${endMonth}月${endDay}日 ${endHour}:${endMinute}`;
+                                tableData[`${feePercent}%手续费退票时间`] = timeRange;
+                            }
+                        }
+                    }
+                }
+
+                // 处理"之后不支持退"的情况
+                if (line.includes('之后不支持退')) {
+                    const deadlineMatch = line.match(/(\d{1,2})月(\d{1,2})日\s+(\d{1,2})(?::(\d{2}))?\s+之后不支持退/);
+                    if (deadlineMatch) {
+                        const month = deadlineMatch[1];
+                        const day = deadlineMatch[2];
+                        const hour = deadlineMatch[3];
+                        const minute = deadlineMatch[4] || '00';
+                        const deadlineTime = `${month}月${day}日 ${hour}:${minute}`;
+                        tableData['退票截止时间'] = deadlineTime;
+                    }
+                }
+            }
+
+            return tableData;
+        }
+
+        // 简单的时问范围验证
+        function isTimeRangeValid(timeRangeStr, currentTime) {
+            try {
+                const match = timeRangeStr.match(/(\d{1,2})月(\d{1,2})日\s+(\d{1,2}):(\d{2})\s+起至\s+(\d{1,2})月(\d{1,2})日\s+(\d{1,2}):(\d{2})/);
+                if (!match) return false;
+
+                const currentYear = currentTime.getFullYear();
+                const startTime = new Date(currentYear, parseInt(match[1]) - 1, parseInt(match[2]), parseInt(match[3]), parseInt(match[4]));
+                const endTime = new Date(currentYear, parseInt(match[5]) - 1, parseInt(match[6]), parseInt(match[7]), parseInt(match[8]));
+
+                return currentTime <= endTime;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        function parseAnnouncement() {
+            const input = document.getElementById('announcementInput');
+            const typeSelect = document.getElementById('announcementType');
+            const resultsContainer = document.getElementById('resultsContainer');
+            const parseBtn = document.getElementById('parseBtn');
+
+            const text = input.value.trim();
+            const type = typeSelect.value;
+
+            if (!text) {
+                showToast('请输入退票公告文本', 'warning');
+                return;
+            }
+
+            if (!type) {
+                showToast('请先选择公告类型', 'warning');
+                return;
+            }
+
+            resultsContainer.innerHTML = '<div class="loading">正在解析公告，请稍候...</div>';
+            parseBtn.disabled = true;
+            parseBtn.textContent = '⏳ 解析中...';
+
+            // 延迟执行以显示加载状态
+            setTimeout(() => {
+                try {
+                    const results = analyzeAnnouncementByType(text, type);
+                    displayResults(results);
+                    parseBtn.disabled = false;
+                    parseBtn.textContent = '🔍 智能解析';
+                } catch (error) {
+                    console.error('解析过程出错:', error);
+                    resultsContainer.innerHTML = '<div class="empty-state" style="color: #d32f2f;">解析过程出错: ' + error.message + '</div>';
+                    parseBtn.disabled = false;
+                    parseBtn.textContent = '🔍 智能解析';
+                }
+            }, 500);
+        }
+
+        // 分析公告文本（退票规则解析引擎）
+        function analyzeAnnouncement(text) {
+            console.log('analyzeAnnouncement called with text length:', text.length);
+            const results = {
+                conclusion: '',
+                conclusionColor: '',
+                tableData: {},
+                customerReply: '',
+                risks: []
+            };
+
+            // 1. 检查不可退关键词（最高优先级）
+            if (checkNonRefundKeywords(text)) {
+                results.conclusion = '不可退';
+                results.conclusionColor = '#d32f2f';
+                results.customerReply = '亲亲，帮您查询该项目已超过退票时间，根据主办方规则目前不支持退票，感谢您的理解～';
+                return results;
+            }
+
+            // 2. 解析退票规则表格
+            const tableData = parseRefundRulesTable(text);
+            results.tableData = tableData;
+
+            // 3. 检查风险因素
+            const risks = checkRiskFactors(text, tableData);
+            results.risks = risks;
+
+            // 4. 如果存在风险，输出需人工确认
+            // console.log('风险检查:', risks);
+            if (risks.length > 0) {
+                results.conclusion = '需人工确认';
+                results.conclusionColor = '#f57c00';
+                results.customerReply = '亲亲，该项目退票规则存在时间或场次差异，为避免误导，已建议人工进一步核实，请您稍等～';
+                return results;
+            }
+
+            // 5. 根据解析结果判断结论
+            const conclusion = determineConclusion(tableData);
+            results.conclusion = conclusion.status;
+            results.conclusionColor = conclusion.color;
+            results.customerReply = conclusion.reply;
+
+            return results;
+        }
+
+        // 检查不可退关键词（最高优先级）
+        function checkNonRefundKeywords(text) {
+            const nonRefundKeywords = [
+                '不支持退',
+                '不支持退票',
+                '不认可手续费不退',
+                '短信之后下单不支持退',
+                '短信之后下单的按照项目原规则-不支持退'
+            ];
+
+            for (const keyword of nonRefundKeywords) {
+                if (text.includes(keyword)) {
+                    // 检查是否有明确的"可退时间区间"来覆盖此关键词
+                    if (!hasExplicitRefundTimeRange(text)) {
+                        return true; // 确认不可退
+                    }
+                }
+            }
+            return false;
+        }
+
+        // 检查是否有明确的退票时间区间
+        function hasExplicitRefundTimeRange(text) {
+            // 检查是否包含明确的退票时间规则
+            const timePatterns = [
+                /(\d{1,2})月(\d{1,2})日\s+\d{1,2}:\d{2}\s+起至\s+(\d{1,2})月(\d{1,2})日\s+\d{1,2}:\d{2}/,
+                /(\d{1,2})月(\d{1,2})日\s+\d{1,2}:\d{2}\s+至\s+(\d{1,2})月(\d{1,2})日\s+\d{1,2}:\d{2}/
+            ];
+
+            for (const pattern of timePatterns) {
+                if (pattern.test(text)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // 解析退票规则表格
+        function parseRefundRulesTable(text) {
+            const tableData = {
+                '演出时间': '',
+                '场次日期': '',
+                '免费退时间': '',
+                '0.6%手续费退票时间': '',
+                '20%手续费退票时间': '',
+                '20.6%手续费退票时间': '',
+                '30%手续费退票时间': '',
+                '50%手续费退票时间': '',
+                '退票截止时间': ''
+            };
+
+            // 提取演出时间
+            const showTimeMatch = text.match(/演出时间[:：]\s*([^\n\r]+)/);
+            if (showTimeMatch) {
+                tableData['演出时间'] = showTimeMatch[1].trim();
+            }
+
+            // 提取场次日期
+            const sessionDateMatch = text.match(/场次日期[:：]\s*([^\n\r]+)/);
+            if (sessionDateMatch) {
+                tableData['场次日期'] = sessionDateMatch[1].trim();
+            }
+
+            // 解析退票规则
+            const lines = text.split('\n');
+            for (const line of lines) {
+                if (line.includes('①') || line.includes('②') || line.includes('③') ||
+                    line.includes('④') || line.includes('⑤')) {
+
+                    const ruleMatch = line.match(/([①②③④⑤])\s*([^①②③④⑤\n\r]+)/);
+                    if (ruleMatch) {
+                        const ruleContent = ruleMatch[2].trim();
+
+                        // 提取时间范围 - 支持多种格式
+                        let timeRange = '';
+                        let foundTimeRange = false;
+
+                        // 尝试多种时间格式匹配
+                        const patterns = [
+                            // 格式1: 1月24日 12:00 起至 1月30日 12:00
+                            /(\d{1,2})月(\d{1,2})日\s+(\d{1,2})(?::(\d{2}))?\s+起至\s+(\d{1,2})月(\d{1,2})日\s+(\d{1,2})(?::(\d{2}))?/,
+                            // 格式2: 1月24日 12:00至1月30日 12:00 (不带"起"字)
+                            /(\d{1,2})月(\d{1,2})日\s+(\d{1,2})(?::(\d{2}))?\s*至\s+(\d{1,2})月(\d{1,2})日\s+(\d{1,2})(?::(\d{2}))?/,
+                            // 格式3: 付款成功后48H内
+                            /付款成功后(\d+)小时内/
+                        ];
+
+                        for (const pattern of patterns) {
+                            const match = ruleContent.match(pattern);
+                            if (match) {
+                                if (pattern.source.includes('付款成功后')) {
+                                    // 特殊处理付款后时间
+                                    timeRange = `付款成功后${match[1]}小时内`;
+                                } else {
+                                    const startMonth = match[1];
+                                    const startDay = match[2];
+                                    const startHour = match[3];
+                                    const startMinute = match[4] || '00';
+                                    const endMonth = match[5];
+                                    const endDay = match[6];
+                                    const endHour = match[7];
+                                    const endMinute = match[8] || '00';
+
+                                    timeRange = `${startMonth}月${startDay}日 ${startHour}:${startMinute} 起至 ${endMonth}月${endDay}日 ${endHour}:${endMinute}`;
+                                }
+                                foundTimeRange = true;
+                                break;
+                            }
+                        }
+
+                        if (foundTimeRange) {
+                            // 判断费用类型
+                            if (ruleContent.includes('免费退') || ruleContent.includes('可免费退') || ruleContent.includes('免手续费') || ruleContent.includes('0.6%')) {
+                                if (ruleContent.includes('0.6%')) {
+                                    tableData['0.6%手续费退票时间'] = timeRange;
+                                } else {
+                                    tableData['免费退时间'] = timeRange;
+                                }
+                            } else {
+                                // 提取手续费百分比
+                                const feeMatch = ruleContent.match(/收取(\d+(?:\.\d+)?)%手续费/);
+                                if (feeMatch) {
+                                    const feePercent = feeMatch[1];
+                                    const feeKey = `${feePercent}%手续费退票时间`;
+                                    if (tableData[feeKey] !== undefined) {
+                                        tableData[feeKey] = timeRange;
+                                    }
+                                } else if (ruleContent.includes('20%') || ruleContent.includes('20.6%') || ruleContent.includes('30%') || ruleContent.includes('50%')) {
+                                    // 处理没有"收取"字样的百分比
+                                    const percentMatch = ruleContent.match(/(\d+(?:\.\d+)?)%/);
+                                    if (percentMatch) {
+                                        const feePercent = percentMatch[1];
+                                        const feeKey = `${feePercent}%手续费退票时间`;
+                                        if (tableData[feeKey] !== undefined) {
+                                            tableData[feeKey] = timeRange;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // 提取退票截止时间
+                        const deadlineMatch = ruleContent.match(/退票截止时间[:：]\s*([^\n\r]+)/);
+                        if (deadlineMatch) {
+                            tableData['退票截止时间'] = deadlineMatch[1].trim();
+                        }
+                    }
+                }
+            }
+
+            // console.log('解析结果:', tableData);
+            return tableData;
+        }
+
+        // 检查风险因素
+        function checkRiskFactors(text, tableData) {
+            const risks = [];
+
+            // 检查演出时间是否包含年份
+            const showTime = tableData['演出时间'];
+            if (showTime && !showTime.match(/20\d{2}/)) {
+                risks.push('演出时间年份缺失-高风险');
+            }
+
+            // 检查是否存在多个场次
+            const showTimeCount = (text.match(/场次/g) || []).length;
+            if (showTimeCount > 1) {
+                risks.push('存在多个场次-需人工确认');
+            }
+
+            // 检查是否存在短信后下单规则 - 这个需要人工确认
+            if (text.includes('短信') && text.includes('下单')) {
+                risks.push('存在短信后下单特殊规则');
+            }
+
+            // 检查是否存在特殊时间规则 - 这个需要人工确认
+            if (text.includes('付款成功后') && text.includes('小时内')) {
+                risks.push('存在付款成功后时间特殊规则');
+            }
+
+            // 检查是否存在多条退票规则 - 这个不应该作为风险，因为多规则是正常的
+            // const ruleLines = text.split('\n').filter(line =>
+            //     line.includes('①') || line.includes('②') || line.includes('③') ||
+            //     line.includes('④') || line.includes('⑤')
+            // );
+            // if (ruleLines.length > 1) {
+            //     risks.push('存在多条退票规则-需人工确认');
+            // }
+
+            return risks;
+        }
+
+        // 根据解析结果判断结论
+        function determineConclusion(tableData) {
+            const now = new Date();
+            // console.log('当前时间:', now);
+            // console.log('表格数据:', tableData);
+
+            // 检查是否存在特殊时间规则（如付款成功后X小时内）
+            const allTimeValues = [
+                tableData['免费退时间'],
+                tableData['0.6%手续费退票时间'],
+                tableData['20%手续费退票时间'],
+                tableData['20.6%手续费退票时间'],
+                tableData['30%手续费退票时间'],
+                tableData['50%手续费退票时间']
+            ];
+
+            const hasSpecialTimeRule = allTimeValues.some(timeValue =>
+                timeValue && timeValue.includes('付款成功后')
+            );
+
+            // 调试日志（已移除未定义的 debugInfo 变量）
+            console.log('[解析] 是否存在特殊时间规则:', hasSpecialTimeRule);
+
+            if (hasSpecialTimeRule) {
+                // 如果存在特殊时间规则，无法确定具体时间范围
+                return {
+                    status: '需人工确认',
+                    color: '#f57c00',
+                    reply: '亲亲，该项目退票规则存在时间或场次差异，为避免误导，已建议人工进一步核实，请您稍等～'
+                };
+            }
+
+            // 收集所有有效的退票规则
+            const refundRules = [];
+            if (tableData['免费退时间']) {
+                refundRules.push({
+                    type: 'free',
+                    timeRange: tableData['免费退时间'],
+                    fee: '免费'
+                });
+            }
+
+            const feeTypes = ['0.6%', '20%', '20.6%', '30%', '50%'];
+            feeTypes.forEach(fee => {
+                const key = `${fee}手续费退票时间`;
+                if (tableData[key]) {
+                    refundRules.push({
+                        type: 'fee',
+                        timeRange: tableData[key],
+                        fee: fee
+                    });
+                }
+            });
+
+            // console.log('收集到的退票规则:', refundRules);
+
+            if (refundRules.length === 0) {
+                // 没有找到任何规则
+                console.log('没有找到任何退票规则');
+                return {
+                    status: '需人工确认',
+                    color: '#f57c00',
+                    reply: '亲亲，该项目退票规则存在时间或场次差异，为避免误导，已建议人工进一步核实，请您稍等～'
+                };
+            }
+
+            // 分析每个规则的状态
+            let currentValidRule = null;
+            let futureValidRule = null;
+            let allRulesExpired = true;
+
+            for (const rule of refundRules) {
+                const status = getTimeRangeStatus(rule.timeRange, now);
+                // console.log('规则状态:', rule, '状态:', status);
+
+                if (status === 'current') {
+                    currentValidRule = rule;
+                    allRulesExpired = false;
+                } else if (status === 'future') {
+                    if (!futureValidRule || rule.type === 'free') {
+                        // 优先选择免费退规则
+                        futureValidRule = rule;
+                    }
+                    allRulesExpired = false;
+                } else if (status === 'expired') {
+                    // 仍然标记为未过期，因为可能有其他规则
+                }
+            }
+
+            // 根据分析结果判断结论
+            if (currentValidRule) {
+                // 当前时间在有效退票期内
+                if (currentValidRule.type === 'free') {
+                    results.conclusion = '可免费退';
+                    results.conclusionColor = '#2e7d32';
+                    results.customerReply = '亲亲，帮您查询该项目在 XX 至 XX 时间内支持免费退票，您可在订单详情点击【申请退款】操作哦～';
+                } else {
+                    results.conclusion = `可退（${currentValidRule.fee}手续费）`;
+                    results.conclusionColor = '#2e7d32';
+                    results.customerReply = `亲亲，帮您查询该项目目前支持退票，但需收取 ${currentValidRule.fee} 手续费，退票截止至 XX，请您在订单详情点击【申请退款】操作～`;
+                }
+            } else if (futureValidRule) {
+                // 当前时间在退票期之前，但未来可退
+                if (futureValidRule.type === 'free') {
+                    results.conclusion = '可免费退';
+                    results.conclusionColor = '#2e7d32';
+                    results.customerReply = '亲亲，帮您查询该项目在 XX 至 XX 时间内支持免费退票，您可在订单详情点击【申请退款】操作哦～';
+                } else {
+                    results.conclusion = `可退（${futureValidRule.fee}手续费）`;
+                    results.conclusionColor = '#2e7d32';
+                    results.customerReply = `亲亲，帮您查询该项目目前支持退票，但需收取 ${futureValidRule.fee} 手续费，退票截止至 XX，请您在订单详情点击【申请退款】操作～`;
+                }
+            } else if (allRulesExpired) {
+                // 所有规则都已过期
+                results.conclusion = '不可退';
+                results.conclusionColor = '#d32f2f';
+                results.customerReply = '亲亲，帮您查询该项目已超过退票时间，根据主办方规则目前不支持退票，感谢您的理解～';
+            } else {
+                // 其他情况，需人工确认
+                results.conclusion = '需人工确认';
+                results.conclusionColor = '#f57c00';
+                results.customerReply = '亲亲，该项目退票规则存在时间或场次差异，为避免误导，已建议人工进一步核实，请您稍等～';
+            }
+
+            return results;
+        }
+
+        // 获取时间范围相对于当前时间的状�?
+        function getTimeRangeStatus(timeRangeStr, currentTime) {
+            try {
+                // 特殊处理付款时间规则
+                if (timeRangeStr.includes('付款成功后')) {
+                    return 'unknown';
+                }
+
+                // 解析标准时间范围
+                const match = timeRangeStr.match(/(\d{1,2})月(\d{1,2})日\s+(\d{1,2}):(\d{2})\s+起至\s+(\d{1,2})月(\d{1,2})日\s+(\d{1,2}):(\d{2})/);
+                if (!match) return 'unknown';
+
+                const startMonth = parseInt(match[1]);
+                const startDay = parseInt(match[2]);
+                const startHour = parseInt(match[3]);
+                const startMinute = parseInt(match[4]);
+
+                const endMonth = parseInt(match[5]);
+                const endDay = parseInt(match[6]);
+                const endHour = parseInt(match[7]);
+                const endMinute = parseInt(match[8]);
+
+                const currentYear = currentTime.getFullYear();
+
+                // 处理跨年情况
+                let startYear = currentYear;
+                let endYear = currentYear;
+                if (endMonth < startMonth) {
+                    endYear = currentYear + 1;
+                }
+
+                const startTime = new Date(startYear, startMonth - 1, startDay, startHour, startMinute);
+                const endTime = new Date(endYear, endMonth - 1, endDay, endHour, endMinute);
+
+                if (currentTime >= startTime && currentTime <= endTime) {
+                    return 'current';  // 当前时间在范围内
+                } else if (currentTime < startTime) {
+                    return 'future';   // 当前时间在范围之前
+                } else {
+                    return 'expired';  // 当前时间在范围之后
+                }
+            } catch (error) {
+                console.error('时间范围状态解析失败:', error);
+                return 'unknown';
+            }
+        }
+
+        // 检查当前时间是否在指定时间范围内
+        function isCurrentTimeInRange(timeRangeStr, currentTime) {
+            try {
+                // 处理特殊格式：付款成功后X小时内
+                const paymentMatch = timeRangeStr.match(/付款成功后(\d+)小时内/);
+                if (paymentMatch) {
+                    // 对于这种格式，我们无法确定具体时间范围，返回false表示不确定
+                    return false;
+                }
+
+                // 解析标准时间范围字符串
+                const match = timeRangeStr.match(/(\d{1,2})月(\d{1,2})日\s+(\d{1,2}):(\d{2})\s+起至\s+(\d{1,2})月(\d{1,2})日\s+(\d{1,2}):(\d{2})/);
+                if (!match) return false;
+
+                const startMonth = parseInt(match[1]);
+                const startDay = parseInt(match[2]);
+                const startHour = parseInt(match[3]);
+                const startMinute = parseInt(match[4]);
+
+                const endMonth = parseInt(match[5]);
+                const endDay = parseInt(match[6]);
+                const endHour = parseInt(match[7]);
+                const endMinute = parseInt(match[8]);
+
+                const currentYear = currentTime.getFullYear();
+
+                // 处理跨年情况：如果结束月份小于开始月份，说明跨年
+                let startYear = currentYear;
+                let endYear = currentYear;
+                if (endMonth < startMonth) {
+                    endYear = currentYear + 1;
+                }
+
+                const startTime = new Date(startYear, startMonth - 1, startDay, startHour, startMinute);
+                const endTime = new Date(endYear, endMonth - 1, endDay, endHour, endMinute);
+
+                return currentTime >= startTime && currentTime <= endTime;
+            } catch (error) {
+                console.error('时间范围解析失败:', error);
+                return false;
+            }
+        }
+
+
+        // 显示解析结果
+        function displayResults(results) {
+            const container = document.getElementById('resultsContainer');
+            container.innerHTML = '';
+
+            // 结论状态
+            const conclusionDiv = document.createElement('div');
+            conclusionDiv.className = 'result-item';
+            conclusionDiv.innerHTML = `
+                <div class="result-item-title">结论状态</div>
+                <div class="result-item-content">
+                    <span class="status-badge" style="background-color: ${results.conclusionColor}; color: white;">
+                        ${results.conclusion}
+                    </span>
+                </div>
+            `;
+            container.appendChild(conclusionDiv);
+
+            // 结构化表格
+            try {
+                const tableContent = formatTableData(results.tableData);
+                console.log('表格内容:', tableContent);
+                const tableDiv = createResultItem('结构化表格', tableContent);
+                container.appendChild(tableDiv);
+            } catch (error) {
+                console.error('创建表格失败:', error);
+                const errorDiv = createResultItem('结构化表格', '<span style="color: #f57c00;">表格生成失败</span>');
+                container.appendChild(errorDiv);
+            }
+
+            // 风险提示
+            if (results.risks.length > 0) {
+                const risksDiv = createResultItem('风险提示', formatRisks(results.risks));
+                container.appendChild(risksDiv);
+            }
+
+            // 客服回复话术
+            const replyDiv = createResultItem('客服回复话术', results.customerReply);
+            container.appendChild(replyDiv);
+        }
+
+        // 创建结果项
+        function createResultItem(title, content) {
+            const div = document.createElement('div');
+            div.className = 'result-item';
+            div.innerHTML = `
+                <div class="result-item-title">${title}</div>
+                <div class="result-item-content">${content}</div>
+            `;
+            return div;
+        }
+
+        // 格式化表格数据
+        function formatTableData(tableData) {
+            const tableRows = [
+                '演出时间',
+                '场次日期',
+                '免费退时间',
+                '0.6%手续费退票时间',
+                '20%手续费退票时间',
+                '20.6%手续费退票时间',
+                '30%手续费退票时间',
+                '50%手续费退票时间',
+                '退票截止时间'
+            ];
+
+            // 只保留有数据的行
+            const validRows = tableRows.filter(row => tableData[row] && tableData[row].trim() !== '');
+
+            if (validRows.length === 0) {
+                return '<span style="color: #999;">暂无识别到的时间信息</span>';
+            }
+
+            let html = '<table style="width: 100%; border-collapse: collapse;">';
+            html += '<thead><tr><th style="border: 1px solid #ddd; padding: 8px; text-align: left; background-color: #f5f5f5;">项目</th><th style="border: 1px solid #ddd; padding: 8px; text-align: left; background-color: #f5f5f5;">时间</th></tr></thead>';
+            html += '<tbody>';
+
+            for (const row of validRows) {
+                const value = tableData[row];
+                html += `<tr><td style="border: 1px solid #ddd; padding: 8px; color: #333;">${row}</td><td style="border: 1px solid #ddd; padding: 8px; color: #333;">${value}</td></tr>`;
+            }
+
+            html += '</tbody></table>';
+            return html;
+        }
+
+        // 格式化风险提示
+        function formatRisks(risks) {
+            if (risks.length === 0) {
+                return '<span style="color: #2e7d32;">无风险因素</span>';
+            }
+            return risks.map(risk => `<span style="color: #f57c00;">⚠️ ${risk}</span>`).join('<br>');
+        }
+
+        // 显示提示消息
+        function showToast(message, type = 'info') {
+            // 创建临时提示元素
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'warning' ? '#fff3cd' : '#d1ecf1'};
+                color: ${type === 'warning' ? '#856404' : '#0c5460'};
+                padding: 12px 16px;
+                border-radius: 6px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                z-index: 10000;
+                font-size: 14px;
+                max-width: 300px;
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 绑定回车键解析
+            document.getElementById('announcementInput').addEventListener('keydown', function(e) {
+                if (e.ctrlKey && e.key === 'Enter') {
+                    e.preventDefault();
+                    parseAnnouncement();
+                }
+            });
+
+            // 自动聚焦到输入框
+            document.getElementById('announcementInput').focus();
+        });
+    </script>
+</body>
+</html></content>
+</xai:function_call name="read_lints">
+<parameter name="paths">["announcement-dialog.html"]

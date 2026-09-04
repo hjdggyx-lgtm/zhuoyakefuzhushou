@@ -1,0 +1,28 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景渐变 -->
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- 圆角矩形背景 -->
+  <rect width="128" height="128" rx="24" fill="url(#grad1)"/>
+  
+  <!-- 文档图标 -->
+  <rect x="30" y="25" width="68" height="78" rx="6" fill="white" opacity="0.95"/>
+  
+  <!-- 文本行 -->
+  <rect x="40" y="38" width="48" height="5" rx="2.5" fill="#667eea" opacity="0.8"/>
+  <rect x="40" y="50" width="40" height="5" rx="2.5" fill="#667eea" opacity="0.6"/>
+  <rect x="40" y="62" width="44" height="5" rx="2.5" fill="#667eea" opacity="0.6"/>
+  <rect x="40" y="74" width="35" height="5" rx="2.5" fill="#667eea" opacity="0.4"/>
+  <rect x="40" y="86" width="42" height="5" rx="2.5" fill="#667eea" opacity="0.4"/>
+  
+  <!-- 搜索图标 -->
+  <circle cx="95" cy="95" r="18" fill="#FFA500" opacity="0.95"/>
+  <circle cx="95" cy="95" r="11" fill="none" stroke="white" stroke-width="3"/>
+  <line x1="103" y1="103" x2="110" y2="110" stroke="white" stroke-width="3" stroke-linecap="round"/>
+</svg>
+

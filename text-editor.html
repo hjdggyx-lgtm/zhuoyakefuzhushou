@@ -1,0 +1,2261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文本编辑器</title>
+    <!-- 立即应用防闪烁样式，在页面渲染前就生效 -->
+    <style id="anti-flash-style">
+        /* 立即禁用所有元素的边框和轮廓 - 最高优先级 */
+        * {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+        *:hover, *:focus, *:active, *:focus-visible, *:focus-within, *::before, *::after {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+        /* 排除右键菜单，允许显示边框 - 必须在hover规则之后 */
+        .context-menu, .context-menu:hover, .context-menu:focus, .context-menu:active,
+        .context-menu.show, .context-menu.show:hover {
+            border: 0.5px solid #c0c0c0 !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+        }
+        /* 暗色主题右键菜单边框 */
+        body.dark-theme .context-menu, 
+        body.dark-theme .context-menu:hover, 
+        body.dark-theme .context-menu:focus, 
+        body.dark-theme .context-menu:active,
+        body.dark-theme .context-menu.show {
+            border: 0.5px solid #7a8a9f !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+        }
+        /* 右键菜单内部元素不显示边框 */
+        .context-menu * {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+        /* 特别处理 contenteditable 和所有可能产生边框的元素 */
+        [contenteditable], [contenteditable] *, 
+        [contenteditable]:hover, [contenteditable]:focus, 
+        [contenteditable]:active, [contenteditable]:focus-visible, 
+        [contenteditable]:focus-within, [contenteditable]::selection {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+        /* 禁用文本选择时的边框 */
+        ::selection, ::-moz-selection {
+            background-color: rgba(0, 123, 255, 0.3) !important;
+            border: none !important;
+            outline: none !important;
+        }
+    </style>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* 全局防止 contenteditable 元素产生边框 */
+        [contenteditable] {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        [contenteditable]:hover {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        [contenteditable]:focus {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        [contenteditable]:active {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        [contenteditable]:focus-visible {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        [contenteditable]:focus-within {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: #f5f5f5;
+            overflow: hidden;
+            border: 0 !important;
+            margin: 0;
+            padding: 0;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        body:hover {
+            border: 0 !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        body:focus {
+            border: 0 !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        html {
+            border: 0 !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .text-editor-container {
+            width: 100%;
+            height: 100vh;
+            background: #ffffff;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 0 !important;
+            margin: 0;
+            padding: 0;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .text-editor-container:hover {
+            border: 0 !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .text-editor-container:focus {
+            border: 0 !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .text-editor-container:focus-within {
+            border: 0 !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .toolbar-select {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 6px 8px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #333;
+            transition: background-color 0.2s ease;
+            min-width: 80px;
+            height: 32px;
+            outline: none;
+            box-shadow: none;
+        }
+
+        .toolbar-select:hover {
+            background: #f5f5f5;
+            border-color: #ddd !important;
+            box-shadow: none;
+        }
+
+        .toolbar-select:active {
+            border-color: #ddd !important;
+            box-shadow: none !important;
+        }
+
+        .toolbar-select:focus {
+            outline: none;
+            border-color: #ddd;
+            box-shadow: none;
+        }
+
+        .toolbar-select:focus-visible {
+            outline: none;
+            border-color: #ddd;
+            box-shadow: none;
+        }
+
+        .toolbar-color-btn {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 4px;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s ease;
+            position: relative;
+            outline: none;
+            box-shadow: none;
+        }
+
+        .toolbar-color-btn:hover {
+            background: #f5f5f5;
+            border-color: #ddd !important;
+            box-shadow: none;
+        }
+
+        .toolbar-color-btn:active {
+            border-color: #ddd !important;
+            box-shadow: none !important;
+        }
+
+        .toolbar-color-btn:focus {
+            outline: none;
+            border-color: #ddd;
+            box-shadow: none;
+        }
+
+        .toolbar-color-btn:focus-visible {
+            outline: none;
+            border-color: #ddd;
+            box-shadow: none;
+        }
+
+        .toolbar-color-preview {
+            width: 24px;
+            height: 24px;
+            border-radius: 3px;
+            border: 1px solid #ccc;
+        }
+
+        .toolbar-color-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            user-select: none;
+        }
+
+        .color-picker-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        body.dark-theme .toolbar-select {
+            background: #475569;
+            border-color: #64748b;
+            color: #e2e8f0;
+        }
+
+        body.dark-theme .toolbar-select:hover {
+            background: #64748b;
+        }
+
+        body.dark-theme .toolbar-color-btn {
+            background: #475569;
+            border-color: #64748b;
+        }
+
+        body.dark-theme .toolbar-color-btn:hover {
+            background: #64748b;
+        }
+
+
+        .text-editor-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            min-height: 300px;
+            font-size: 16px;
+            line-height: 1.6;
+            color: #333;
+            background: white;
+            outline: none !important;
+            border: none !important;
+            box-shadow: none !important;
+            position: relative;
+            z-index: 0;
+        }
+
+        .text-editor-content:focus {
+            outline: none !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        .text-editor-content:focus-visible {
+            outline: none !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        .text-editor-content:hover {
+            outline: none !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        .text-editor-content:active {
+            outline: none !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        .text-editor-content[contenteditable="false"] {
+            cursor: text;
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            outline: none !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        .text-editor-content[contenteditable="true"] {
+            border: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+        }
+
+        .text-editor-content[contenteditable="true"]:focus {
+            border: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+        }
+
+        .text-editor-content[contenteditable="true"]:hover {
+            border: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+        }
+
+        /* 禁用拖动时的文本选择 */
+        .text-editor-content[contenteditable="false"] {
+            -webkit-user-drag: none;
+            user-drag: none;
+        }
+
+        /* 拖动时的样式 */
+        .text-editor-content[dragging],
+        .text-editor-content:active {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        /* 隐藏文本选中时的边框 */
+        ::selection {
+            background: rgba(0, 123, 255, 0.2);
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        ::-moz-selection {
+            background: rgba(0, 123, 255, 0.2);
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        /* 拖动时禁用选择 */
+        .text-editor-content[dragging] * {
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            user-select: none !important;
+        }
+
+        /* 防止拖动时所有元素产生边框 */
+        .text-editor-content * {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .text-editor-content *:hover {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .text-editor-content *:focus {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .text-editor-content *:active {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        /* 禁用拖动时的文本选择（全局） */
+        .text-editor-content[contenteditable="false"] {
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
+        }
+
+        /* 拖动时临时禁用文本选择 */
+        body.dragging,
+        body.dragging * {
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            user-select: none !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .text-editor-content[contenteditable="true"]:active {
+            border: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+        }
+
+
+
+        .text-editor-content-wrapper {
+            position: relative;
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .text-editor-content-wrapper:hover {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .text-editor-content-wrapper:focus {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .text-editor-content-wrapper:focus-within {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .text-editor-content-wrapper:active {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .text-editor-content-wrapper::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background-color: transparent;
+            z-index: 10;
+            pointer-events: none;
+            opacity: 1;
+            display: none;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .text-editor-divider {
+            height: 0;
+            margin: 0;
+            padding: 0;
+            flex-shrink: 0;
+            z-index: 10;
+            position: relative;
+            background: transparent;
+            border: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+            display: none;
+        }
+
+        body.dark-theme .text-editor-content-wrapper::before {
+            background-color: #ffffff;
+            opacity: 1;
+        }
+
+        .text-editor-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .text-editor-content::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 4px;
+        }
+
+        .text-editor-content::-webkit-scrollbar-thumb:hover {
+            background: #aaa;
+        }
+
+        .text-editor-footer {
+            padding: 10px 20px;
+            background: #f9f9f9;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .text-editor-status {
+            font-size: 12px;
+            color: #999;
+        }
+
+
+        /* 右键菜单样式 */
+        .context-menu {
+            position: fixed;
+            background: white;
+            border: 0.5px solid #c0c0c0 !important;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            padding: 2px 0;
+            min-width: 200px;
+            z-index: 10000;
+            display: none;
+            font-size: 13px;
+        }
+
+        .context-menu.show {
+            display: block;
+            /* ══ 需求2：固定边框，不受锁定状态切换影响 ══ */
+            border: 0.5px solid #c0c0c0 !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+        }
+
+        .context-menu-row {
+            display: flex;
+            width: 100%;
+        }
+
+        .context-menu-row .context-menu-item {
+            flex: 1;
+            padding: 3px 8px;
+        }
+
+        .context-menu-item {
+            padding: 3px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background-color 0.2s;
+            line-height: 1.3;
+        }
+
+        .context-menu-item:hover {
+            background: #f5f5f5;
+        }
+
+        .context-menu-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .context-menu-item.disabled:hover {
+            background: white;
+        }
+
+        .context-menu-separator {
+            height: 1px;
+            background: #e0e0e0;
+            margin: 2px 0;
+        }
+
+        .context-menu-label {
+            padding: 2px 12px;
+            font-size: 11px;
+            color: #666;
+            font-weight: 500;
+            line-height: 1.3;
+        }
+
+        .context-menu-input-group {
+            padding: 3px 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .context-menu-input-group label {
+            font-size: 13px;
+            color: #333;
+            min-width: 60px;
+        }
+
+        .context-menu-input-group select,
+        .context-menu-input-group input[type="color"] {
+            flex: 1;
+            padding: 2px 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        /* 为输入框添加固定分界线，隐藏闪烁光标 */
+        .context-menu-input-group {
+            position: relative;
+        }
+
+        /* 隐藏文本输入框的闪烁光标 */
+        .context-menu-input-group input[type="text"],
+        .context-menu-input-group input[type="number"],
+        .context-menu-input-group textarea {
+            caret-color: transparent;
+        }
+
+        /* 当输入框获得焦点时，显示红色边框 */
+        .context-menu-input-group input:focus,
+        .context-menu-input-group select:focus,
+        .context-menu-input-group textarea:focus {
+            border-color: #ff0000;
+        }
+
+        /* 使用包装器的伪元素创建固定的分界线（当子元素获得焦点时显示） */
+        .context-menu-input-group::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 1px;
+            height: 60%;
+            background: #333;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            z-index: 10;
+        }
+
+        /* 当输入框或选择框获得焦点时，显示分界线 */
+        .context-menu-input-group:has(input:focus)::after,
+        .context-menu-input-group:has(select:focus)::after,
+        .context-menu-input-group:has(textarea:focus)::after {
+            opacity: 1;
+        }
+
+        /* 工具栏选择框的样式 */
+        .toolbar-select {
+            position: relative;
+        }
+
+        .toolbar-select:focus {
+            border-color: #ff0000;
+            caret-color: transparent;
+        }
+
+        .toolbar-select:focus::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 4px;
+            bottom: 4px;
+            width: 1px;
+            background: #333;
+            transform: translateX(-50%);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        body.dark-theme .context-menu {
+            background: #475569;
+            border: 0.5px solid #7a8a9f !important;
+        }
+
+        body.dark-theme .context-menu-item:hover {
+            background: #64748b;
+        }
+
+        body.dark-theme .context-menu-separator {
+            background: #64748b;
+        }
+
+        body.dark-theme .context-menu-label {
+            color: #cbd5e1;
+        }
+
+        body.dark-theme .context-menu-input-group label {
+            color: #e2e8f0;
+        }
+
+        body.dark-theme .context-menu-input-group select,
+        body.dark-theme .context-menu-input-group input[type="color"] {
+            background: #334155;
+            border-color: #64748b;
+            color: #e2e8f0;
+        }
+
+        /* ============================================
+           自定义下拉框（替代原生 select，避免 hover 残留）
+           ============================================ */
+        .custom-select {
+            position: relative;
+            width: 100%;
+        }
+        .custom-select-trigger {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 4px 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 13px;
+            background: #ffffff;
+            color: #333;
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .custom-select-trigger:focus {
+            border-color: #64748b;
+        }
+        .custom-select-arrow {
+            flex-shrink: 0;
+            margin-left: 6px;
+            transition: transform 0.2s;
+        }
+        .custom-select.open .custom-select-arrow {
+            transform: rotate(180deg);
+        }
+        .custom-select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin: 2px 0 0 0;
+            padding: 4px 0;
+            list-style: none;
+            background: #ffffff;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            max-height: 260px;
+            overflow-y: auto;
+            z-index: 10001;
+            display: none;
+        }
+        .custom-select.open .custom-select-dropdown {
+            display: block;
+        }
+        .custom-select-option {
+            padding: 6px 10px;
+            color: #333333;
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: background-color 0.15s, color 0.15s;
+        }
+        .custom-select-option:hover {
+            background: #0078d4;
+            color: #ffffff;
+        }
+        .custom-select-option.selected {
+            background: #0078d4;
+            color: #ffffff;
+            font-weight: 500;
+        }
+        /* 深色主题 */
+        body.dark-theme .custom-select-trigger {
+            background: #1e293b;
+            color: #e2e8f0;
+            border-color: #475569;
+        }
+        body.dark-theme .custom-select-dropdown {
+            background: #1e293b;
+            border-color: #475569;
+        }
+        body.dark-theme .custom-select-option {
+            color: #e2e8f0;
+        }
+        body.dark-theme .custom-select-option:hover,
+        body.dark-theme .custom-select-option.selected {
+            background: #0078d4;
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <div class="text-editor-container">
+        <!-- 字体和颜色选择器保留在DOM中以便功能正常，但不显示 -->
+        <select class="toolbar-select" id="fontSizeSelect" title="字体大小" style="display: none;">
+            <option value="1">8px</option>
+            <option value="2">10px</option>
+            <option value="3">12px</option>
+            <option value="4">14px</option>
+            <option value="5" selected>16px</option>
+            <option value="6">18px</option>
+            <option value="7">24px</option>
+            <option value="8">32px</option>
+            <option value="9">48px</option>
+        </select>
+        <select class="toolbar-select" id="fontFamilySelect" title="字体" style="display: none;">
+            <option value="Arial">Arial</option>
+            <option value="Times New Roman">Times New Roman</option>
+            <option value="Courier New">Courier New</option>
+            <option value="Verdana">Verdana</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Palatino">Palatino</option>
+            <option value="Garamond">Garamond</option>
+            <option value="Comic Sans MS">Comic Sans MS</option>
+            <option value="Trebuchet MS">Trebuchet MS</option>
+            <option value="Microsoft YaHei" selected>微软雅黑</option>
+            <option value="SimSun">宋体</option>
+            <option value="SimHei">黑体</option>
+            <option value="KaiTi">楷体</option>
+            <option value="FangSong">仿宋</option>
+        </select>
+        <div class="toolbar-color-btn" title="文字颜色" style="display: none;">
+            <span class="toolbar-color-icon" id="textColorIcon" style="color: #ff0000; font-weight: bold; font-size: 16px;">A</span>
+            <input type="color" class="color-picker-input" id="textColorPicker" value="#000000">
+        </div>
+        <div class="toolbar-color-btn" title="文字背景颜色" style="display: none;">
+            <div class="toolbar-color-preview" id="bgColorPreview" style="background: #ffffff;"></div>
+            <input type="color" class="color-picker-input" id="bgColorPicker" value="#ffffff">
+        </div>
+        <div class="text-editor-divider"></div>
+        <div class="text-editor-content-wrapper">
+            <div class="text-editor-content" id="editorContent" contenteditable="false" spellcheck="false"></div>
+        </div>
+        <div class="text-editor-footer">
+            <span class="text-editor-status" id="statusText">已自动保存</span>
+        </div>
+    </div>
+    
+    <!-- 右键菜单 -->
+    <div class="context-menu" id="contextMenu">
+        <div class="context-menu-label">格式</div>
+        <div class="context-menu-row">
+            <div class="context-menu-item" data-command="bold" id="ctxBold">
+                <strong>B</strong> <span>加粗</span>
+            </div>
+            <div class="context-menu-item" data-command="copy" id="ctxCopy">
+                <span>📋 复制</span>
+            </div>
+        </div>
+        <div class="context-menu-row">
+            <div class="context-menu-item" data-command="italic" id="ctxItalic">
+                <em>I</em> <span>斜体</span>
+            </div>
+            <div class="context-menu-item" data-command="paste" id="ctxPaste">
+                <span>📄 粘贴</span>
+            </div>
+        </div>
+        <div class="context-menu-row">
+            <div class="context-menu-item" data-command="underline" id="ctxUnderline">
+                <u>U</u> <span>下划线</span>
+            </div>
+            <div class="context-menu-item" data-command="cut" id="ctxCut">
+                <span>✂️ 剪切</span>
+            </div>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-label">字体</div>
+        <div class="context-menu-input-group">
+            <label>大小:</label>
+            <div class="custom-select ctx-fontsize-select" id="ctxFontSize" role="combobox" aria-expanded="false">
+                <div class="custom-select-trigger" tabindex="0">
+                    <span class="custom-select-value">16px</span>
+                    <svg class="custom-select-arrow" width="10" height="10" viewBox="0 0 12 12"><path fill="currentColor" d="M6 9L1 4h10z"/></svg>
+                </div>
+                <ul class="custom-select-dropdown" role="listbox">
+                    <li class="custom-select-option" data-value="1" role="option">8px</li>
+                    <li class="custom-select-option" data-value="2" role="option">10px</li>
+                    <li class="custom-select-option" data-value="3" role="option">12px</li>
+                    <li class="custom-select-option" data-value="4" role="option">14px</li>
+                    <li class="custom-select-option selected" data-value="5" role="option">16px</li>
+                    <li class="custom-select-option" data-value="6" role="option">18px</li>
+                    <li class="custom-select-option" data-value="7" role="option">24px</li>
+                    <li class="custom-select-option" data-value="8" role="option">32px</li>
+                    <li class="custom-select-option" data-value="9" role="option">48px</li>
+                </ul>
+            </div>
+        </div>
+        <div class="context-menu-input-group">
+            <label>字体:</label>
+            <div class="custom-select ctx-fontfamily-select" id="ctxFontFamily" role="combobox" aria-expanded="false">
+                <div class="custom-select-trigger" tabindex="0">
+                    <span class="custom-select-value">微软雅黑</span>
+                    <svg class="custom-select-arrow" width="10" height="10" viewBox="0 0 12 12"><path fill="currentColor" d="M6 9L1 4h10z"/></svg>
+                </div>
+                <ul class="custom-select-dropdown" role="listbox">
+                    <li class="custom-select-option" data-value="Arial" role="option">Arial</li>
+                    <li class="custom-select-option" data-value="Times New Roman" role="option">Times New Roman</li>
+                    <li class="custom-select-option" data-value="Courier New" role="option">Courier New</li>
+                    <li class="custom-select-option" data-value="Verdana" role="option">Verdana</li>
+                    <li class="custom-select-option" data-value="Georgia" role="option">Georgia</li>
+                    <li class="custom-select-option" data-value="Palatino" role="option">Palatino</li>
+                    <li class="custom-select-option" data-value="Garamond" role="option">Garamond</li>
+                    <li class="custom-select-option" data-value="Comic Sans MS" role="option">Comic Sans MS</li>
+                    <li class="custom-select-option" data-value="Trebuchet MS" role="option">Trebuchet MS</li>
+                    <li class="custom-select-option selected" data-value="Microsoft YaHei" role="option">微软雅黑</li>
+                    <li class="custom-select-option" data-value="SimSun" role="option">宋体</li>
+                    <li class="custom-select-option" data-value="SimHei" role="option">黑体</li>
+                    <li class="custom-select-option" data-value="KaiTi" role="option">楷体</li>
+                    <li class="custom-select-option" data-value="FangSong" role="option">仿宋</li>
+                </ul>
+            </div>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-label">颜色</div>
+        <div class="context-menu-input-group">
+            <label>文字:</label>
+            <input type="color" id="ctxTextColor" value="#000000">
+        </div>
+        <div class="context-menu-input-group">
+            <label>背景:</label>
+            <input type="color" id="ctxBgColor" value="#ffffff">
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" data-command="removeFormat" id="ctxRemoveFormat">
+            <span>清除格式</span>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" data-command="toggleLock" id="ctxToggleLock">
+            <span id="lockMenuIcon">🔒</span> <span id="lockMenuText">解锁编辑</span>
+        </div>
+    </div>
+
+    <script>
+        // 立即应用防闪烁样式（在 DOM 加载前就执行）
+        (function() {
+            // 创建样式元素并立即插入
+            const style = document.createElement('style');
+            style.textContent = `
+                /* 立即禁用所有元素的边框和轮廓 */
+                * {
+                    border: none !important;
+                    outline: none !important;
+                    box-shadow: none !important;
+                }
+                *:hover, *:focus, *:active, *:focus-visible, *:focus-within {
+                    border: none !important;
+                    outline: none !important;
+                    box-shadow: none !important;
+                }
+                /* 特别处理 contenteditable */
+                [contenteditable], [contenteditable] *, [contenteditable]:hover, 
+                [contenteditable]:focus, [contenteditable]:active, 
+                [contenteditable]:focus-visible, [contenteditable]:focus-within {
+                    border: none !important;
+                    outline: none !important;
+                    box-shadow: none !important;
+                }
+            `;
+            if (document.head) {
+                document.head.appendChild(style);
+            } else {
+                document.addEventListener('DOMContentLoaded', function() {
+                    document.head.appendChild(style);
+                });
+            }
+        })();
+
+        // 全局错误处理，防止未捕获的异常导致页面崩溃
+        window.addEventListener('error', function(event) {
+            console.error('[LOG] 全局错误捕获:', event.error);
+            console.error('[LOG] 错误信息:', event.message);
+            console.error('[LOG] 错误文件:', event.filename);
+            console.error('[LOG] 错误行号:', event.lineno);
+            // 不阻止默认行为，让页面继续运行
+            return true;
+        });
+
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('[LOG] 未处理的 Promise 拒绝:', event.reason);
+            // 阻止默认行为，避免控制台报错
+            event.preventDefault();
+        });
+
+        // 简化防闪烁处理：只保留基本的 CSS 样式，用最小黑线掩盖闪烁
+
+        // 防止拖动时出现黑线：只在真正的拖动时禁用文本选择
+        let isDragging = false;
+        let mouseDownPos = null;
+        const DRAG_THRESHOLD = 20; // 提高阈值到20px，避免误判文本选择为拖动
+
+        document.addEventListener('mousedown', function(e) {
+            // 检查是否在内容区域
+            const editorContent = document.getElementById('editorContent');
+            if (editorContent && editorContent.contains(e.target)) {
+                // 只有在按住特定键（如Ctrl）时才认为是拖动操作
+                // 否则允许正常的文本选择
+                if (e.ctrlKey || e.metaKey) {
+                    mouseDownPos = { x: e.clientX, y: e.clientY };
+                } else {
+                    // 正常点击，清除拖动状态
+                    isDragging = false;
+                    mouseDownPos = null;
+                    document.body.classList.remove('dragging');
+                }
+            }
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            // 只有在按住Ctrl键时才检测拖动
+            if (mouseDownPos && e.buttons === 1 && (e.ctrlKey || e.metaKey)) {
+                const dx = Math.abs(e.clientX - mouseDownPos.x);
+                const dy = Math.abs(e.clientY - mouseDownPos.y);
+                
+                // 如果移动距离超过阈值，认为是拖动操作
+                if (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD) {
+                    if (!isDragging) {
+                        isDragging = true;
+                        document.body.classList.add('dragging');
+                    }
+                }
+            } else if (!(e.ctrlKey || e.metaKey)) {
+                // 如果没有按住Ctrl键，清除拖动状态，允许文本选择
+                if (isDragging) {
+                    isDragging = false;
+                    document.body.classList.remove('dragging');
+                }
+                mouseDownPos = null;
+            }
+        });
+
+        document.addEventListener('mouseup', function(e) {
+            // 拖动结束，恢复文本选择
+            if (isDragging) {
+                document.body.classList.remove('dragging');
+                isDragging = false;
+            }
+            mouseDownPos = null;
+        });
+
+        // 只在拖动时阻止文本选择
+        document.addEventListener('selectstart', function(e) {
+            if (isDragging && document.body.classList.contains('dragging')) {
+                e.preventDefault();
+                return false;
+            }
+        }, false);
+
+        // 防止拖动时出现默认的拖动效果
+        document.addEventListener('dragstart', function(e) {
+            const editorContent = document.getElementById('editorContent');
+            if (editorContent && editorContent.contains(e.target) && isDragging) {
+                e.preventDefault();
+                return false;
+            }
+        }, false);
+    </script>
+    <script src="db.js" onerror="console.warn('[LOG] db.js 加载失败，将使用 localStorage 作为后备')"></script>
+    <script>
+        let categoryId = null;
+        let saveTimer = null;
+        let isInitialized = false;
+        let dbAvailable = false; // 标记数据库是否可用
+        let isLocked = true; // 默认锁定状态
+
+        // ---------------- Python 桥剪贴板封装 ----------------
+        function callPythonGetText() {
+            return new Promise((resolve) => {
+                try {
+                    if (!window.pythonBridge || typeof window.pythonBridge.getClipboardText !== 'function') {
+                        return resolve(null);
+                    }
+                    const fn = window.pythonBridge.getClipboardText;
+                    if (fn.length >= 1) {
+                        fn.call(window.pythonBridge, (text) => resolve(text ?? ""));
+                    } else {
+                        const ret = fn.call(window.pythonBridge);
+                        resolve(ret ?? "");
+                    }
+                } catch (error) {
+                    console.warn('[LOG] Python 桥读取文本失败:', error);
+                    resolve(null);
+                }
+            });
+        }
+
+        function callPythonGetHtml() {
+            return new Promise((resolve) => {
+                try {
+                    if (!window.pythonBridge || typeof window.pythonBridge.getClipboardHtml !== 'function') {
+                        return resolve(null);
+                    }
+                    const fn = window.pythonBridge.getClipboardHtml;
+                    if (fn.length >= 1) {
+                        fn.call(window.pythonBridge, (html) => resolve(html ?? ""));
+                    } else {
+                        const ret = fn.call(window.pythonBridge);
+                        resolve(ret ?? "");
+                    }
+                } catch (error) {
+                    console.warn('[LOG] Python 桥读取HTML失败:', error);
+                    resolve(null);
+                }
+            });
+        }
+
+        async function readFromClipboard() {
+            try {
+                for (let i = 0; i < 10; i++) {
+                    if (window.pythonBridge && typeof window.pythonBridge.getClipboardText === 'function') {
+                        const text = await callPythonGetText();
+                        if (text !== null) {
+                            return text;
+                        }
+                        break;
+                    }
+                    await new Promise(r => setTimeout(r, 50));
+                }
+            } catch (error) {
+                console.warn('[LOG] 通过 Python 桥读取文本失败，尝试 Clipboard API:', error);
+            }
+
+            if (navigator.clipboard && navigator.clipboard.readText) {
+                try {
+                    const text = await navigator.clipboard.readText();
+                    return text ?? "";
+                } catch (error) {
+                    console.warn('[LOG] Clipboard API readText 失败:', error);
+                }
+            }
+
+            console.warn('[LOG] 读取剪贴板文本失败');
+            return null;
+        }
+
+        async function readFromClipboardAsHtml() {
+            try {
+                for (let i = 0; i < 10; i++) {
+                    if (window.pythonBridge && typeof window.pythonBridge.getClipboardHtml === 'function') {
+                        const html = await callPythonGetHtml();
+                        if (html) {
+                            return html;
+                        }
+                        break;
+                    }
+                    await new Promise(r => setTimeout(r, 50));
+                }
+            } catch (error) {
+                console.warn('[LOG] 通过 Python 桥读取HTML失败，尝试 Clipboard API:', error);
+            }
+
+            if (navigator.clipboard && navigator.clipboard.read) {
+                try {
+                    const clipboardItems = await navigator.clipboard.read();
+                    for (const clipboardItem of clipboardItems) {
+                        for (const type of clipboardItem.types) {
+                            if (type === 'text/html') {
+                                const blob = await clipboardItem.getType(type);
+                                const html = await blob.text();
+                                if (html) {
+                                    return html;
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.warn('[LOG] Clipboard API read HTML 失败:', error);
+                }
+            }
+
+            return null;
+        }
+
+        // 从 URL 参数获取 categoryId 和 categoryName（在 DOM 加载前就可以获取）
+        try {
+            const urlParams = new URLSearchParams(window.location.search);
+            categoryId = urlParams.get('categoryId');
+            const categoryName = urlParams.get('categoryName') || '文本编辑器';
+        } catch (error) {
+            console.error('[LOG] 获取 URL 参数失败:', error);
+        }
+
+        // 初始化数据库
+        async function initDatabase() {
+            try {
+                if (typeof db !== 'undefined' && db && typeof db.init === 'function') {
+                    await db.init();
+                    dbAvailable = true;
+                    console.log('[LOG] 数据库初始化成功');
+                } else {
+                    console.warn('[LOG] db 对象未找到，将使用 localStorage 作为后备');
+                    dbAvailable = false;
+                }
+            } catch (error) {
+                console.error('[LOG] 数据库初始化失败，将使用 localStorage:', error);
+                dbAvailable = false;
+            }
+        }
+
+        // 加载已保存的内容
+        async function loadContent() {
+            if (!categoryId) {
+                console.log('[LOG] 没有 categoryId，跳过加载内容');
+                return;
+            }
+            
+            try {
+                const editorContent = document.getElementById('editorContent');
+                if (!editorContent) {
+                    console.error('[LOG] 编辑器内容区域未找到');
+                    return;
+                }
+
+                let savedText = '';
+                
+                // 尝试从数据库加载
+                if (dbAvailable && typeof db !== 'undefined' && db && typeof db.getSetting === 'function') {
+                    try {
+                        savedText = await db.getSetting(`category_text_${categoryId}`, '');
+                        console.log('[LOG] 从数据库加载内容成功');
+                    } catch (error) {
+                        console.error('[LOG] 从数据库加载失败，尝试 localStorage:', error);
+                        // 如果数据库加载失败，尝试从 localStorage 加载
+                        try {
+                            savedText = localStorage.getItem(`category_text_${categoryId}`) || '';
+                        } catch (e) {
+                            console.error('[LOG] 从 localStorage 加载也失败:', e);
+                        }
+                    }
+                } else {
+                    // 数据库不可用，使用 localStorage
+                    try {
+                        savedText = localStorage.getItem(`category_text_${categoryId}`) || '';
+                        console.log('[LOG] 从 localStorage 加载内容');
+                    } catch (error) {
+                        console.error('[LOG] localStorage 加载失败:', error);
+                    }
+                }
+
+                editorContent.innerHTML = savedText || '';
+                // 确保加载后立即清除可能的边框
+                setTimeout(() => {
+                    try {
+                        if (editorContent.style) {
+                            editorContent.style.border = 'none';
+                            editorContent.style.outline = 'none';
+                            editorContent.style.boxShadow = 'none';
+                        }
+                        // 不自动聚焦，避免闪烁
+                        // editorContent.focus();
+                    } catch (e) {
+                        console.error('[LOG] 初始化编辑器失败:', e);
+                    }
+                }, 0);
+            } catch (error) {
+                console.error('[LOG] 加载内容失败:', error);
+            }
+        }
+
+        // 保存内容
+        async function saveContent() {
+            if (!categoryId) {
+                console.log('[LOG] 没有 categoryId，跳过保存');
+                return;
+            }
+            
+            try {
+                const editorContent = document.getElementById('editorContent');
+                if (!editorContent) {
+                    console.error('[LOG] 编辑器内容区域未找到');
+                    return;
+                }
+                
+                const content = editorContent.innerHTML;
+                const statusText = document.getElementById('statusText');
+                
+                if (statusText) {
+                    statusText.textContent = '正在保存...';
+                }
+                
+                let saveSuccess = false;
+                
+                // 尝试保存到数据库
+                if (dbAvailable && typeof db !== 'undefined' && db && typeof db.setSetting === 'function') {
+                    try {
+                        await db.setSetting(`category_text_${categoryId}`, content);
+                        saveSuccess = true;
+                        console.log('[LOG] 保存到数据库成功');
+                    } catch (error) {
+                        console.error('[LOG] 保存到数据库失败，尝试 localStorage:', error);
+                        // 如果数据库保存失败，尝试保存到 localStorage
+                        try {
+                            localStorage.setItem(`category_text_${categoryId}`, content);
+                            saveSuccess = true;
+                        } catch (e) {
+                            console.error('[LOG] 保存到 localStorage 也失败:', e);
+                        }
+                    }
+                } else {
+                    // 数据库不可用，使用 localStorage
+                    try {
+                        localStorage.setItem(`category_text_${categoryId}`, content);
+                        saveSuccess = true;
+                        console.log('[LOG] 保存到 localStorage 成功');
+                    } catch (error) {
+                        console.error('[LOG] localStorage 保存失败:', error);
+                    }
+                }
+                
+                if (statusText) {
+                    statusText.textContent = saveSuccess ? '已自动保存' : '保存失败';
+                }
+            } catch (error) {
+                console.error('[LOG] 保存内容失败:', error);
+                const statusText = document.getElementById('statusText');
+                if (statusText) {
+                    statusText.textContent = '保存失败';
+                }
+            }
+        }
+
+        // 防抖保存
+        function handleInput() {
+            console.log('[LOG] handleInput 被触发，当前锁定状态:', isLocked);
+            if (isLocked) {
+                console.log('[LOG] 编辑器已锁定，跳过保存。请右键点击"解锁编辑"以启用保存功能');
+                return; // 锁定状态下不保存
+            }
+            if (saveTimer) {
+                clearTimeout(saveTimer);
+            }
+            saveTimer = setTimeout(() => {
+                console.log('[LOG] 准备保存内容...');
+                saveContent();
+            }, 1000);
+        }
+
+        // 更新锁定状态
+        function updateLockState() {
+            const editorContent = document.getElementById('editorContent');
+            const fontSizeSelect = document.getElementById('fontSizeSelect');
+            const fontFamilySelect = document.getElementById('fontFamilySelect');
+            const textColorPicker = document.getElementById('textColorPicker');
+            const bgColorPicker = document.getElementById('bgColorPicker');
+            const lockMenuIcon = document.getElementById('lockMenuIcon');
+            const lockMenuText = document.getElementById('lockMenuText');
+
+            if (!editorContent) return;
+
+            // ══ 需求1：isLocked=true 时强制 contentEditable="false"，底层禁止直接输入 ══
+            if (isLocked) {
+                editorContent.contentEditable = 'false';
+                editorContent.onkeydown = null;
+                editorContent.onpaste   = null;
+                editorContent.oncut     = null;
+                console.log('[LOCK] 🔒 锁定状态：contentEditable=false，键盘/粘贴/剪切事件已清除');
+            } else {
+                editorContent.contentEditable = 'true';
+                editorContent.onkeydown = null;
+                editorContent.onpaste   = null;
+                editorContent.oncut     = null;
+                console.log('[LOCK] 🔓 解锁状态：contentEditable=true，可正常编辑');
+            }
+
+
+            // 更新右键菜单中的锁定图标和文本
+            if (lockMenuIcon) {
+                lockMenuIcon.textContent = isLocked ? '🔒' : '🔓';
+            }
+            if (lockMenuText) {
+                lockMenuText.textContent = isLocked ? '解锁编辑' : '锁定编辑';
+            }
+
+            // 禁用/启用选择框
+            if (fontSizeSelect) {
+                fontSizeSelect.disabled = isLocked;
+            }
+            if (fontFamilySelect) {
+                fontFamilySelect.disabled = isLocked;
+            }
+
+            // 禁用/启用颜色选择器
+            if (textColorPicker) {
+                textColorPicker.disabled = isLocked;
+            }
+            if (bgColorPicker) {
+                bgColorPicker.disabled = isLocked;
+            }
+
+            // 禁用/启用颜色按钮
+            const colorBtns = document.querySelectorAll('.toolbar-color-btn');
+            colorBtns.forEach(btn => {
+                if (isLocked) {
+                    btn.style.pointerEvents = 'none';
+                    btn.style.opacity = '0.6';
+                } else {
+                    btn.style.pointerEvents = 'auto';
+                    btn.style.opacity = '1';
+                }
+            });
+            
+            // 更新右键菜单状态（如果已初始化）
+            const contextMenu = document.getElementById('contextMenu');
+            if (contextMenu) {
+                const menuItems = contextMenu.querySelectorAll('.context-menu-item');
+                menuItems.forEach(item => {
+                    // 锁定/解锁和复制选项始终可用
+                    if (item.dataset.command === 'toggleLock' || item.dataset.command === 'copy') {
+                        item.classList.remove('disabled');
+                    } else {
+                        if (isLocked) {
+                            item.classList.add('disabled');
+                        } else {
+                            item.classList.remove('disabled');
+                        }
+                    }
+                });
+                const inputs = contextMenu.querySelectorAll('select, input');
+                inputs.forEach(input => {
+                    input.disabled = isLocked;
+                });
+            }
+        }
+
+        // 加载锁定状态（始终默认锁定，用于防止误编辑）
+        async function loadLockState() {
+            // 始终默认锁定，不加载保存的状态
+            // 这样每次打开都是锁定状态，防止误编辑
+            isLocked = true;
+            console.log('[LOG] 锁定状态已设置为默认锁定（true），防止误编辑');
+        }
+
+        // 自定义下拉框初始化（替代原生 select，避免 hover 拖留）
+        function initCustomSelect(selectId) {
+            const container = document.getElementById(selectId);
+            if (!container || container.dataset.customSelectInit) return;
+            container.dataset.customSelectInit = 'true';
+            const trigger = container.querySelector('.custom-select-trigger');
+            const dropdown = container.querySelector('.custom-select-dropdown');
+            if (!trigger || !dropdown) return;
+
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = container.classList.contains('open');
+                document.querySelectorAll('.custom-select.open').forEach(el => {
+                    if (el !== container) el.classList.remove('open');
+                });
+                container.classList.toggle('open', !isOpen);
+            });
+
+            trigger.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); trigger.click(); }
+                else if (e.key === 'Escape') { container.classList.remove('open'); }
+            });
+
+            dropdown.addEventListener('click', (e) => {
+                const option = e.target.closest('.custom-select-option');
+                if (!option) return;
+                dropdown.querySelectorAll('.custom-select-option.selected').forEach(opt => opt.classList.remove('selected'));
+                option.classList.add('selected');
+                const triggerValue = container.querySelector('.custom-select-value');
+                if (triggerValue) triggerValue.textContent = option.textContent;
+                container.classList.remove('open');
+                container.dispatchEvent(new CustomEvent('change', { detail: { value: option.dataset.value }, bubbles: true }));
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!container.contains(e.target)) container.classList.remove('open');
+            });
+        }
+
+        // 初始化右键菜单
+        function initContextMenu() {
+            console.log('[LOG] 开始初始化右键菜单...');
+            const contextMenu = document.getElementById('contextMenu');
+            const editorContent = document.getElementById('editorContent');
+            console.log('[LOG] contextMenu:', contextMenu);
+            console.log('[LOG] editorContent:', editorContent);
+            if (!contextMenu || !editorContent) {
+                console.error('[LOG] 右键菜单元素未找到！contextMenu:', !!contextMenu, 'editorContent:', !!editorContent);
+                return;
+            }
+            console.log('[LOG] 右键菜单元素找到，开始绑定事件...');
+
+            // 保存选择范围和选中文本
+            let savedSelection = null;
+            let savedSelectedText = '';
+
+            // 保存当前选择范围（有选区时才更新，避免覆盖 mouseup 已保存的选区）
+            function saveSelection() {
+                try {
+                    const selection = window.getSelection();
+                    if (selection && selection.rangeCount > 0 && selection.toString().length > 0) {
+                        const range = selection.getRangeAt(0);
+                        if (editorContent.contains(range.commonAncestorContainer) ||
+                            range.commonAncestorContainer === editorContent ||
+                            editorContent.contains(range.commonAncestorContainer.parentNode)) {
+                            savedSelection = range.cloneRange();
+                        }
+                    }
+                    // 没有选区时不动 savedSelection，保留之前 mouseup 保存的
+                } catch (error) {
+                    console.error('[LOG] 保存选择范围失败:', error);
+                }
+            }
+
+            // 恢复选择范围
+            function restoreSelection() {
+                try {
+                    // 如果编辑器被锁定，尝试临时解锁（用于粘贴等操作）
+                    const wasLocked = editorContent.contentEditable === 'false';
+                    if (wasLocked) {
+                        // 临时解锁以便恢复选择
+                        editorContent.contentEditable = 'true';
+                    }
+                    
+                    editorContent.focus();
+                    
+                    const selection = window.getSelection();
+                    selection.removeAllRanges();
+                    
+                    if (savedSelection) {
+                        // 验证保存的选择范围是否仍然有效
+                        try {
+                            // 检查保存的范围是否仍然在编辑器内
+                            const container = savedSelection.commonAncestorContainer;
+                            if (editorContent.contains(container) || container === editorContent || 
+                                (container.nodeType === Node.TEXT_NODE && editorContent.contains(container.parentNode))) {
+                                selection.addRange(savedSelection);
+                            } else {
+                                // 如果保存的范围不在编辑器内，使用默认位置
+                                throw new Error('Selection range is outside editor');
+                            }
+                        } catch (e) {
+                            // 如果保存的范围无效，尝试在编辑器末尾创建光标
+                            console.warn('[LOG] 保存的选择范围无效，使用默认位置');
+                            const range = document.createRange();
+                            if (editorContent.childNodes.length > 0) {
+                                const lastNode = editorContent.childNodes[editorContent.childNodes.length - 1];
+                                if (lastNode.nodeType === Node.TEXT_NODE) {
+                                    range.setStart(lastNode, lastNode.textContent.length);
+                                } else {
+                                    range.setStartAfter(lastNode);
+                                }
+                                range.collapse(true);
+                            } else {
+                                range.setStart(editorContent, 0);
+                                range.collapse(true);
+                            }
+                            selection.addRange(range);
+                        }
+                    } else {
+                        // 如果没有保存的选择，尝试在编辑器末尾创建光标
+                        const range = document.createRange();
+                        if (editorContent.childNodes.length > 0) {
+                            const lastNode = editorContent.childNodes[editorContent.childNodes.length - 1];
+                            if (lastNode.nodeType === Node.TEXT_NODE) {
+                                range.setStart(lastNode, lastNode.textContent.length);
+                            } else {
+                                range.setStartAfter(lastNode);
+                            }
+                            range.collapse(true);
+                        } else {
+                            range.setStart(editorContent, 0);
+                            range.collapse(true);
+                        }
+                        selection.addRange(range);
+                    }
+                } catch (error) {
+                    console.error('[LOG] 恢复选择范围失败:', error);
+                    // 如果恢复失败，至少聚焦编辑器
+                    editorContent.focus();
+                }
+            }
+
+            // 显示/隐藏右键菜单
+            function showContextMenu(x, y) {
+                // 保存当前选择范围
+                saveSelection();
+                
+                // 先临时显示菜单以获取尺寸
+                contextMenu.style.left = x + 'px';
+                contextMenu.style.top = y + 'px';
+                contextMenu.classList.add('show');
+                
+                // 获取菜单尺寸和窗口尺寸
+                const menuRect = contextMenu.getBoundingClientRect();
+                const windowWidth = window.innerWidth;
+                const windowHeight = window.innerHeight;
+                
+                // 智能位置调整：优先避免遮挡选中文本
+                let adjustedX = x + 15; // 默认向右偏移15px避免遮挡
+                let adjustedY = y + 5;  // 默认向下偏移5px
+                
+                // 检查右边界，如果超出则尝试左侧显示
+                if (adjustedX + menuRect.width > windowWidth) {
+                    // 尝试显示在左侧
+                    const leftX = x - menuRect.width - 15;
+                    if (leftX >= 10) {
+                        adjustedX = leftX; // 左侧有足够空间
+                    } else {
+                        adjustedX = windowWidth - menuRect.width - 10; // 贴右边界
+                    }
+                }
+                
+                // 确保不超出左边界
+                if (adjustedX < 10) {
+                    adjustedX = 10;
+                }
+                
+                // 检查下边界，如果超出则尝试上方显示
+                if (adjustedY + menuRect.height > windowHeight) {
+                    // 尝试显示在上方
+                    const topY = y - menuRect.height - 5;
+                    if (topY >= 10) {
+                        adjustedY = topY; // 上方有足够空间
+                    } else {
+                        adjustedY = windowHeight - menuRect.height - 10; // 贴下边界
+                    }
+                }
+                
+                // 确保不超出上边界
+                if (adjustedY < 10) {
+                    adjustedY = 10;
+                }
+                
+                // 应用调整后的位置
+                contextMenu.style.left = adjustedX + 'px';
+                contextMenu.style.top = adjustedY + 'px';
+                
+                // 同步选择器的值
+                const fontSizeSelect = document.getElementById('fontSizeSelect');
+                const fontFamilySelect = document.getElementById('fontFamilySelect');
+                const textColorPicker = document.getElementById('textColorPicker');
+                const bgColorPicker = document.getElementById('bgColorPicker');
+                
+                const ctxFontSize = document.getElementById('ctxFontSize');
+                const ctxFontFamily = document.getElementById('ctxFontFamily');
+                const ctxTextColor = document.getElementById('ctxTextColor');
+                const ctxBgColor = document.getElementById('ctxBgColor');
+                
+                if (fontSizeSelect && ctxFontSize) {
+                    ctxFontSize.value = fontSizeSelect.value;
+                }
+                if (fontFamilySelect && ctxFontFamily) {
+                    ctxFontFamily.value = fontFamilySelect.value;
+                }
+                if (textColorPicker && ctxTextColor) {
+                    ctxTextColor.value = textColorPicker.value;
+                }
+                if (bgColorPicker && ctxBgColor) {
+                    ctxBgColor.value = bgColorPicker.value;
+                }
+            }
+
+            function hideContextMenu() {
+                contextMenu.classList.remove('show');
+            }
+
+            // 鼠标松开时保存选区和选中文本
+            // ══ 需求1：锁定时 contentEditable=false，mouseup 在 document 层监听才可靠 ══
+            document.addEventListener('mouseup', () => {
+                const sel = window.getSelection();
+                if (sel && sel.rangeCount > 0 && sel.toString().length > 0) {
+                    // 只保存编辑器内的选区
+                    const range = sel.getRangeAt(0);
+                    if (editorContent.contains(range.commonAncestorContainer) ||
+                        range.commonAncestorContainer === editorContent) {
+                        savedSelection = range.cloneRange();
+                        savedSelectedText = sel.toString();
+                        console.log('[SELECT] 📝 mouseup 保存选区:', `"${savedSelectedText.slice(0, 30)}"`);
+                    }
+                }
+            });
+
+            // 编辑区域右键事件（锁定状态下也显示菜单，以便解锁）
+            editorContent.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                // ══ 需求3：右键时再次尝试保存选区（作为双重保险）══
+                const sel = window.getSelection();
+                if (sel && sel.rangeCount > 0 && sel.toString().length > 0) {
+                    savedSelection = sel.getRangeAt(0).cloneRange();
+                    savedSelectedText = sel.toString();
+                    console.log('[SELECT] 📝 contextmenu 保存选区:', `"${savedSelectedText.slice(0, 30)}"`);
+                }
+                console.log('[MENU] 右键菜单弹出，当前锁定状态:', isLocked ? '🔒 已锁定' : '🔓 已解锁', '缓存文字:', savedSelectedText ? `"${savedSelectedText.slice(0, 20)}"` : '(无)');
+                showContextMenu(e.pageX, e.pageY);
+            });
+
+            // 点击其他地方隐藏菜单
+            document.addEventListener('click', (e) => {
+                if (!contextMenu.contains(e.target)) {
+                    hideContextMenu();
+                }
+            });
+
+            // 右键菜单项点击事件
+            const menuItems = contextMenu.querySelectorAll('.context-menu-item[data-command]');
+            menuItems.forEach(item => {
+                item.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const command = item.dataset.command;
+                    
+                    // ── toggleLock：直接处理，不走后续逻辑 ──
+                    if (command === 'toggleLock') {
+                        try {
+                            isLocked = !isLocked;
+                            console.log('[LOG] 锁定状态已切换:', isLocked ? '🔒 已锁定' : '🔓 已解锁');
+                            updateLockState();
+                            hideContextMenu();
+                        } catch (error) {
+                            console.error('[LOG] 切换锁定状态失败:', error);
+                        }
+                        return;
+                    }
+
+                    // ── copy：锁定状态下白名单，只用预存文字，完全不碰 contentEditable ──
+                    if (command === 'copy') {
+                        const textToCopy = savedSelectedText || editorContent.textContent || editorContent.innerText || '';
+                        console.log('[COPY] 📋 copy 命令执行 | isLocked:', isLocked, '| savedSelectedText:', savedSelectedText ? `"${savedSelectedText.slice(0,30)}"` : '(空)', '| 最终复制:', textToCopy ? `"${textToCopy.slice(0,30)}"` : '(空)');
+                        if (textToCopy) {
+                            if (window.pythonBridge && typeof window.pythonBridge.copy_text === 'function') {
+                                const ok = window.pythonBridge.copy_text(textToCopy);
+                                console.log(ok ? '[COPY] ✅ 已复制到剪贴板（pythonBridge）' : '[COPY] ❌ 复制失败（pythonBridge）');
+                            } else {
+                                try {
+                                    await navigator.clipboard.writeText(textToCopy);
+                                    console.log('[COPY] ✅ 已复制到剪贴板（navigator.clipboard）');
+                                } catch(err) {
+                                    console.error('[COPY] ❌ navigator.clipboard 失败:', err);
+                                }
+                            }
+                        } else {
+                            console.warn('[COPY] ⚠️ 没有可复制的文字');
+                        }
+                        hideContextMenu();
+                        return;  // copy 处理完毕，直接返回
+                    }
+
+                    // ── 其余命令：锁定状态下全部拦截 ──
+                    if (isLocked) {
+                        hideContextMenu();
+                        return;
+                    }
+
+                    // ── 解锁状态下，paste 用 execCommand，其余恢复选区后执行 ──
+                    if (command !== 'paste') {
+                        restoreSelection();
+                    }
+                    if (editorContent) {
+                        editorContent.focus();
+                    }
+                    
+                    try {
+                        if (command === 'cut') {
+                            // 使用 execCommand 剪切（更可靠）
+                            const selection = window.getSelection();
+                            if (selection && selection.toString()) {
+                                const success = document.execCommand('cut', false, null);
+                                if (success) {
+                                    console.log('[LOG] ✅ 已剪切到剪贴板');
+                                } else {
+                                    // 如果 execCommand 失败，尝试手动实现
+                                    try {
+                                        const text = selection.toString();
+                                        await navigator.clipboard.writeText(text);
+                                        // 删除选中的文本
+                                        if (selection.rangeCount > 0) {
+                                            const range = selection.getRangeAt(0);
+                                            range.deleteContents();
+                                            // 更新selection
+                                            selection.removeAllRanges();
+                                            const newRange = document.createRange();
+                                            newRange.setStart(range.startContainer, range.startOffset);
+                                            newRange.collapse(true);
+                                            selection.addRange(newRange);
+                                        }
+                                        console.log('[LOG] ✅ 已剪切到剪贴板');
+                                    } catch (err) {
+                                        console.error('[LOG] 剪切失败:', err);
+                                    }
+                                }
+                            } else {
+                                console.warn('[LOG] ⚠️ 请先选择要剪切的文本');
+                            }
+                            // 剪切完成后关闭菜单
+                            hideContextMenu();
+                        } else if (command === 'paste') {
+                            // 简化粘贴实现，直接使用浏览器默认粘贴功能
+                            console.log('[LOG] 右键菜单粘贴开始');
+                            
+                            // 保存当前锁定状态
+                            const wasLocked = isLocked;
+                            
+                            // 临时解锁编辑器
+                            if (wasLocked) {
+                                editorContent.contentEditable = 'true';
+                            }
+                            
+                            // 确保编辑器获得焦点并恢复选择范围
+                            editorContent.focus();
+                            restoreSelection();
+                            
+                            try {
+                                // 直接使用浏览器的粘贴命令，这是最可靠的方法
+                                const success = document.execCommand('paste', false, null);
+                                
+                                if (success) {
+                                    console.log('[LOG] ✅ 粘贴成功');
+                                } else {
+                                    console.warn('[LOG] ⚠️ 粘贴失败，尝试备用方法');
+                                    
+                                    // 备用方法：使用 Clipboard API
+                                    try {
+                                        const text = await navigator.clipboard.readText();
+                                        if (text) {
+                                            // 获取选择范围
+                                            const selection = window.getSelection();
+                                            if (selection.rangeCount > 0) {
+                                                const range = selection.getRangeAt(0);
+                                                 
+                                                // 删除选中文本
+                                                if (!range.collapsed) {
+                                                    range.deleteContents();
+                                                }
+                                                 
+                                                // 插入剪贴板内容
+                                                const textNode = document.createTextNode(text);
+                                                range.insertNode(textNode);
+                                                 
+                                                // 更新光标位置
+                                                range.setStartAfter(textNode);
+                                                range.collapse(true);
+                                                selection.removeAllRanges();
+                                                selection.addRange(range);
+                                                
+                                                console.log('[LOG] ✅ 备用方法粘贴成功');
+                                            }
+                                        }
+                                    } catch (fallbackErr) {
+                                        console.error('[LOG] ❌ 备用粘贴方法失败:', fallbackErr);
+                                    }
+                                }
+                            } finally {
+                                // 粘贴完成后，触发保存（在恢复锁定状态之前）
+                                if (wasLocked) {
+                                    // 临时设置为解锁状态，以便保存
+                                    const originalLockState = isLocked;
+                                    isLocked = false;
+                                    
+                                    // 手动触发保存
+                                    console.log('[LOG] 粘贴完成，触发保存...');
+                                    handleInput();
+                                    
+                                    // 恢复锁定状态
+                                    isLocked = originalLockState;
+                                    editorContent.contentEditable = 'false';
+                                } else {
+                                    // 如果本来就是解锁状态，input 事件会自动触发保存
+                                    // 但为了确保，也手动触发一次
+                                    handleInput();
+                                }
+                                
+                                console.log('[LOG] 右键菜单粘贴结束');
+                                
+                                // 隐藏右键菜单
+                                hideContextMenu();
+                            }
+                        } else {
+                            // 其他命令使用 execCommand
+                            const success = document.execCommand(command, false, null);
+                            if (!success) {
+                                console.warn('[LOG] 命令执行可能失败:', command);
+                            }
+                            hideContextMenu();
+                        }
+                    } catch (error) {
+                        console.error('[LOG] 执行命令失败:', command, error);
+                        // 粘贴操作的错误已经在内部处理，不需要在这里关闭菜单
+                        if (command !== 'paste') {
+                            hideContextMenu();
+                        }
+                    }
+                });
+            });
+
+            // 字体大小选择（自定义下拉框）
+            const ctxFontSize = document.getElementById('ctxFontSize');
+            const fontSizeSelect = document.getElementById('fontSizeSelect');
+            if (ctxFontSize) {
+                initCustomSelect('ctxFontSize');
+                const _fsTrigger = ctxFontSize.querySelector('.custom-select-trigger');
+                if (_fsTrigger) _fsTrigger.addEventListener('click', (e) => {
+                    if (isLocked) { e.stopPropagation(); e.preventDefault(); }
+                }, true);
+                ctxFontSize.addEventListener('change', (e) => {
+                    if (isLocked) return;
+                    const value = (e.detail && e.detail.value) || e.target.value;
+                    if (fontSizeSelect) {
+                        fontSizeSelect.value = value;
+                        fontSizeSelect.dispatchEvent(new Event('change'));
+                    }
+                    hideContextMenu();
+                });
+            }
+
+            // 字体选择（自定义下拉框）
+            const ctxFontFamily = document.getElementById('ctxFontFamily');
+            const fontFamilySelect = document.getElementById('fontFamilySelect');
+            if (ctxFontFamily) {
+                initCustomSelect('ctxFontFamily');
+                const _ffTrigger = ctxFontFamily.querySelector('.custom-select-trigger');
+                if (_ffTrigger) _ffTrigger.addEventListener('click', (e) => {
+                    if (isLocked) { e.stopPropagation(); e.preventDefault(); }
+                }, true);
+                ctxFontFamily.addEventListener('change', (e) => {
+                    if (isLocked) return;
+                    const value = (e.detail && e.detail.value) || e.target.value;
+                    if (fontFamilySelect) {
+                        fontFamilySelect.value = value;
+                        fontFamilySelect.dispatchEvent(new Event('change'));
+                    }
+                    hideContextMenu();
+                });
+            }
+
+            // 文字颜色选择
+            const ctxTextColor = document.getElementById('ctxTextColor');
+            const textColorPicker = document.getElementById('textColorPicker');
+            if (ctxTextColor && textColorPicker) {
+                ctxTextColor.addEventListener('change', (e) => {
+                    if (isLocked) return;
+                    textColorPicker.value = e.target.value;
+                    textColorPicker.dispatchEvent(new Event('change'));
+                    hideContextMenu();
+                });
+            }
+
+            // 背景颜色选择
+            const ctxBgColor = document.getElementById('ctxBgColor');
+            const bgColorPicker = document.getElementById('bgColorPicker');
+            if (ctxBgColor && bgColorPicker) {
+                ctxBgColor.addEventListener('change', (e) => {
+                    if (isLocked) return;
+                    bgColorPicker.value = e.target.value;
+                    bgColorPicker.dispatchEvent(new Event('change'));
+                    hideContextMenu();
+                });
+            }
+
+            // 菜单状态会在 updateLockState 中更新
+        }
+
+        // 保存锁定状态
+        async function saveLockState() {
+            if (!categoryId) {
+                return;
+            }
+
+            try {
+                let saveSuccess = false;
+
+                // 尝试保存到数据库
+                if (dbAvailable && typeof db !== 'undefined' && db && typeof db.setSetting === 'function') {
+                    try {
+                        await db.setSetting(`category_lock_${categoryId}`, isLocked);
+                        saveSuccess = true;
+                        console.log('[LOG] 保存锁定状态到数据库成功');
+                    } catch (error) {
+                        console.error('[LOG] 保存锁定状态到数据库失败，尝试 localStorage:', error);
+                        try {
+                            localStorage.setItem(`category_lock_${categoryId}`, isLocked.toString());
+                            saveSuccess = true;
+                        } catch (e) {
+                            console.error('[LOG] 保存锁定状态到 localStorage 也失败:', e);
+                        }
+                    }
+                } else {
+                    // 数据库不可用，使用 localStorage
+                    try {
+                        localStorage.setItem(`category_lock_${categoryId}`, isLocked.toString());
+                        saveSuccess = true;
+                        console.log('[LOG] 保存锁定状态到 localStorage 成功');
+                    } catch (error) {
+                        console.error('[LOG] localStorage 保存锁定状态失败:', error);
+                    }
+                }
+            } catch (error) {
+                console.error('[LOG] 保存锁定状态失败:', error);
+            }
+        }
+
+        // 初始化函数（延迟执行，避免阻塞）
+        async function initializeEditor() {
+            if (isInitialized) {
+                console.log('[LOG] 编辑器已初始化，跳过');
+                return;
+            }
+            
+            try {
+                console.log('[LOG] 开始初始化文本编辑器...');
+                
+                // 等待 DOM 完全加载
+                const editorContent = document.getElementById('editorContent');
+                if (!editorContent) {
+                    console.warn('[LOG] 编辑器内容区域未找到，延迟重试...');
+                    setTimeout(() => {
+                        if (!isInitialized) {
+                            initializeEditor();
+                        }
+                    }, 100);
+                    return;
+                }
+
+                // 先显示界面，确保用户能看到编辑器
+                editorContent.style.display = 'block';
+                console.log('[LOG] 编辑器界面已显示');
+
+                // 初始化数据库（延迟执行，避免阻塞）
+                await new Promise(resolve => setTimeout(resolve, 200));
+                try {
+                    await initDatabase();
+                } catch (error) {
+                    console.error('[LOG] 数据库初始化失败，继续执行（将使用 localStorage）:', error);
+                }
+                
+                // 加载内容（即使数据库失败也会尝试 localStorage）
+                try {
+                    await loadContent();
+                } catch (error) {
+                    console.error('[LOG] 加载内容失败，继续执行:', error);
+                }
+
+                // 绑定事件
+                if (editorContent) {
+                    // input 事件会捕获所有内容变化（包括粘贴、剪切、输入等）
+                    editorContent.addEventListener('input', handleInput);
+                    // 额外监听 DOMSubtreeModified 以捕获通过 execCommand 的修改
+                    editorContent.addEventListener('DOMSubtreeModified', handleInput);
+                    console.log('[LOG] 已绑定编辑器事件监听器（input + DOMSubtreeModified）');
+                }
+
+
+                // 字体大小选择
+                try {
+                    const fontSizeSelect = document.getElementById('fontSizeSelect');
+                    if (fontSizeSelect) {
+                        fontSizeSelect.addEventListener('change', (e) => {
+                            if (isLocked) {
+                                return; // 锁定状态下不执行
+                            }
+                            try {
+                                if (editorContent) {
+                                    editorContent.focus();
+                                }
+                                document.execCommand('fontSize', false, e.target.value);
+                            } catch (error) {
+                                console.error('[LOG] 设置字体大小失败:', error);
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('[LOG] 初始化字体大小选择失败:', error);
+                }
+
+                // 字体选择
+                try {
+                    const fontFamilySelect = document.getElementById('fontFamilySelect');
+                    if (fontFamilySelect) {
+                        fontFamilySelect.addEventListener('change', (e) => {
+                            if (isLocked) {
+                                return; // 锁定状态下不执行
+                            }
+                            try {
+                                if (editorContent) {
+                                    editorContent.focus();
+                                }
+                                document.execCommand('fontName', false, e.target.value);
+                            } catch (error) {
+                                console.error('[LOG] 设置字体失败:', error);
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('[LOG] 初始化字体选择失败:', error);
+                }
+
+                // 文字颜色选择
+                try {
+                    const textColorPicker = document.getElementById('textColorPicker');
+                    const textColorIcon = document.getElementById('textColorIcon');
+                    if (textColorPicker && textColorIcon) {
+                        textColorPicker.addEventListener('change', (e) => {
+                            if (isLocked) {
+                                return; // 锁定状态下不执行
+                            }
+                            try {
+                                if (editorContent) {
+                                    editorContent.focus();
+                                }
+                                const color = e.target.value;
+                                // 更新图标颜色
+                                textColorIcon.style.color = color;
+                                document.execCommand('foreColor', false, color);
+                            } catch (error) {
+                                console.error('[LOG] 设置文字颜色失败:', error);
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('[LOG] 初始化文字颜色选择失败:', error);
+                }
+
+                // 文字背景颜色选择
+                try {
+                    const bgColorPicker = document.getElementById('bgColorPicker');
+                    const bgColorPreview = document.getElementById('bgColorPreview');
+                    if (bgColorPicker && bgColorPreview) {
+                        bgColorPicker.addEventListener('change', (e) => {
+                            if (isLocked) {
+                                return; // 锁定状态下不执行
+                            }
+                            try {
+                                if (editorContent) {
+                                    editorContent.focus();
+                                }
+                                const color = e.target.value;
+                                bgColorPreview.style.background = color;
+                                document.execCommand('backColor', false, color);
+                            } catch (error) {
+                                console.error('[LOG] 设置文字背景颜色失败:', error);
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('[LOG] 初始化文字背景颜色选择失败:', error);
+                }
+
+                // 快捷键
+                try {
+                    document.addEventListener('keydown', (e) => {
+                        if (isLocked) {
+                            return; // 锁定状态下不执行快捷键
+                        }
+                        if (e.ctrlKey || e.metaKey) {
+                            try {
+                                if (e.key === 'b') {
+                                    e.preventDefault();
+                                    document.execCommand('bold', false, null);
+                                } else if (e.key === 'i') {
+                                    e.preventDefault();
+                                    document.execCommand('italic', false, null);
+                                } else if (e.key === 'u') {
+                                    e.preventDefault();
+                                    document.execCommand('underline', false, null);
+                                }
+                            } catch (error) {
+                                console.error('[LOG] 快捷键执行失败:', error);
+                            }
+                        }
+                    });
+                } catch (error) {
+                    console.error('[LOG] 绑定快捷键失败:', error);
+                }
+
+
+                // 加载锁定状态（默认锁定）
+                try {
+                    await loadLockState();
+                } catch (error) {
+                    console.error('[LOG] 加载锁定状态失败，使用默认锁定:', error);
+                    isLocked = true;
+                }
+
+                // 初始化锁定状态
+                updateLockState();
+
+                // 右键菜单功能
+                try {
+                    console.log('[LOG] 准备调用 initContextMenu...');
+                    initContextMenu();
+                    console.log('[LOG] initContextMenu 调用完成');
+                } catch (error) {
+                    console.error('[LOG] 初始化右键菜单失败:', error);
+                    console.error('[LOG] 错误堆栈:', error.stack);
+                }
+
+                isInitialized = true;
+                console.log('[LOG] 文本编辑器初始化完成');
+            } catch (error) {
+                console.error('[LOG] 文本编辑器初始化失败:', error);
+                console.error('[LOG] 错误堆栈:', error.stack);
+                // 即使初始化失败，也标记为已初始化，避免重复尝试
+                isInitialized = true;
+            }
+        }
+
+        // 等待 DOM 完全加载后再初始化
+        let initRetryCount = 0;
+        const maxInitRetries = 50; // 最多重试50次（约5秒）
+        
+        function startInitialization() {
+            if (initRetryCount >= maxInitRetries) {
+                console.error('[LOG] 初始化超时，强制开始初始化');
+                initializeEditor();
+                return;
+            }
+            
+            initRetryCount++;
+            
+            // 确保核心元素存在（其他元素可选）
+            const coreElement = document.getElementById('editorContent');
+            
+            if (coreElement) {
+                // 核心元素存在，可以开始初始化
+                setTimeout(() => {
+                    initializeEditor();
+                }, 300);
+            } else {
+                // 如果元素还没加载完，再等一会儿
+                console.log(`[LOG] 等待元素加载... (${initRetryCount}/${maxInitRetries})`);
+                setTimeout(() => {
+                    startInitialization();
+                }, 100);
+            }
+        }
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                startInitialization();
+            });
+        } else {
+            // DOM 已经加载完成
+            startInitialization();
+        }
+    </script>
+</body>
+</html>
+
