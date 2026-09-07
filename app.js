@@ -2414,13 +2414,15 @@ async function setupEventListeners() {
         
         if (importBtn) {
             importBtn.addEventListener('click', () => {
-                console.log('[LOG] 点击了导入按钮（待开发）');
+                console.log('[LOG] 点击了导入按钮');
+                importPhrases();
             });
         }
 
         if (exportBtn) {
             exportBtn.addEventListener('click', () => {
-                console.log('[LOG] 点击了导出按钮（待开发）');
+                console.log('[LOG] 点击了导出按钮');
+                exportPhrases();
             });
         }
         
@@ -4892,6 +4894,18 @@ async function loadPhrases(forceRefreshTabs = false) {
             // 显示弹层并高亮匹配的二级分类
             await showPopoverForCategory(parentId, keyword, getCategoryId(matchedSubCategory));
         }
+    }
+    
+    // 🆕 未选中分类且非搜索时，不显示话术卡片
+    if (!isSearching && currentSelectedCategoryId === '') {
+        phraseList.innerHTML = `
+            <div class="empty-state">
+                <p>📋 暂无标签页</p>
+                <p>请在上方分类中选择一个分类开始使用</p>
+            </div>
+        `;
+        console.log('📝 未选中分类，不加载话术');
+        return;
     }
     
     // 🔧 只显示直接属于该分类的话术，不包含子分类的话术
@@ -11073,6 +11087,39 @@ async function importPhrases() {
                 
                 // 🎯 检测数据格式版本
                 isNewFormat = data.version === "2.0" && data.categories && data.phrases;
+
+                // 🆕 导入模式选择：目标库已有数据时让用户选「整库替换」或「跳过重复」
+                {
+                    const _existingP = await db.getAllPhrases();
+                    const _existingC = await db.getAllCategories();
+                    const _hasData = _existingP.length > 0 || _existingC.filter(c => c.id !== 1).length > 0;
+                    if (_hasData) {
+                        const _replace = confirm(
+                            '检测到当前已有数据，请选择导入方式：\n\n' +
+                            '「确定」= 整库替换：清空当前所有分类和话术后全量导入（适合跨机器迁移）\n' +
+                            '「取消」= 跳过重复：保留现有数据，只导入不重复的话术'
+                        );
+                        if (_replace) {
+                            console.log('[LOG] 用户选择整库替换，硬删当前数据...');
+                            // 硬删所有话术（避免软删产生孤儿显示为"未分类"）
+                            await db.clearAllPhrasesPermanently();
+                            // 删所有分类（保留回收站 id=1）
+                            const _allCats = await db.getAllCategories();
+                            for (const _c of _allCats) {
+                                if (_c.id === 1) continue;
+                                await db.deleteCategory(_c.id);
+                            }
+                            // 清空 localStorage 中的变形话术
+                            const _keysToRemove = [];
+                            for (let i = 0; i < localStorage.length; i++) {
+                                const _k = localStorage.key(i);
+                                if (_k && _k.startsWith('variants_')) _keysToRemove.push(_k);
+                            }
+                            _keysToRemove.forEach(_k => localStorage.removeItem(_k));
+                            console.log('[LOG] 整库替换：已硬删当前数据');
+                        }
+                    }
+                }
                 
                 // 支持三种格式：
                 // 1. 新格式 v2.0：包含 categories 和 phrases
@@ -11426,6 +11473,29 @@ async function importPhrases() {
                     }
                 }
                 
+                // 🆕 导入搜索框字幕设置（localStorage，如果有）
+                if (isNewFormat) {
+                    try {
+                        if (data.search_marquee_texts !== undefined) {
+                            localStorage.setItem('searchMarqueeTexts', data.search_marquee_texts);
+                            if (typeof updateSearchMarqueeContent === 'function') {
+                                updateSearchMarqueeContent(data.search_marquee_texts);
+                            }
+                            console.log('✅ 搜索框字幕内容导入完成');
+                        }
+                        if (data.search_marquee_enabled !== undefined) {
+                            localStorage.setItem('searchMarqueeEnabled', String(data.search_marquee_enabled));
+                            if (typeof updateMarqueeVisibility === 'function') {
+                                updateMarqueeVisibility();
+                            }
+                            console.log('✅ 搜索框字幕开关导入完成');
+                        }
+                    } catch (error) {
+                        console.error('⚠️ 搜索框字幕设置导入失败:', error);
+                        // 不中断导入流程，继续执行
+                    }
+                }
+                
                 // 🔄 导入变形话术数据（如果有）
                 if (isNewFormat && data.variants_data && phraseIdMap) {
                     try {
@@ -11548,6 +11618,9 @@ async function exportPhrases() {
         // 🆕 导出字幕设置
         const marqueeText = await db.getSetting('marqueeText', '重要提醒：请确保在使用话术前仔细核对内容，避免发送错误信息！');
         const newShowMarquee = await db.getSetting('newShowMarquee', 'false');
+        // 🆕 导出搜索框字幕设置（localStorage）
+        const searchMarqueeTexts = localStorage.getItem('searchMarqueeTexts') || '';
+        const searchMarqueeEnabled = localStorage.getItem('searchMarqueeEnabled');
         
         // 🔄 导出变形话术（从localStorage中读取）
         const variantsData = {};
@@ -11634,6 +11707,9 @@ async function exportPhrases() {
             // 🆕 字幕设置
             marquee_text: marqueeText,
             marquee_enabled: newShowMarquee,
+            // 🆕 搜索框字幕设置（localStorage）
+            search_marquee_texts: searchMarqueeTexts,
+            search_marquee_enabled: searchMarqueeEnabled,
             // 🔄 变形话术数据（按父话术ID存储）
             variants_data: variantsData
         };

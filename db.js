@@ -2143,12 +2143,40 @@ class PhraseDatabase {
         };
     }
 
+    // 🆕 整库替换用：硬删所有话术（store.clear），不产生软删孤儿
+    async clearAllPhrasesPermanently() {
+        return new Promise((resolve, reject) => {
+            const tx = this.db.transaction(['phrases'], 'readwrite');
+            const store = tx.objectStore('phrases');
+            const req = store.clear();
+            tx.oncomplete = () => {
+                this._phrasesCacheDirty = true;
+                this._phrasesCache = null;
+                resolve();
+            };
+            tx.onerror = () => reject(tx.error);
+            req.onerror = () => reject(req.error);
+        });
+    }
+
     // ==================== 导入导出 ====================
 
     async exportAllPhrases() {
-        // 导出需要尽可能完整：包含已删除话术（回收站）以及子话术
-        const phrases = await this.searchPhrases('', null, true, true);
-        return phrases;
+        // 🆕 导出绕过缓存直接查 DB，避免缓存时序漏话术
+        const allPhrases = await new Promise((resolve, reject) => {
+            const tx = this.db.transaction(['phrases'], 'readonly');
+            const req = tx.objectStore('phrases').getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => reject(req.error);
+        });
+        // 补 category_name（和 searchPhrases 一致）
+        const categories = await this.getAllCategories();
+        const categoryMap = {};
+        categories.forEach(cat => { categoryMap[cat.id] = cat.name; });
+        return allPhrases.map(phrase => ({
+            ...phrase,
+            category_name: categoryMap[phrase.category_id] || '未分类'
+        }));
     }
 
     async importPhrases(phrases) {
@@ -2173,6 +2201,17 @@ class PhraseDatabase {
             let variantCompletedCount = 0;
             const variantCount = variantPhrases.length;
             const totalCount = phrases.length;
+            
+            // 🔧 修复：等事务真正提交(oncomplete)后再 resolve，避免 loadPhrases 读到未提交数据
+            let _resolved = false;
+            const _finish = () => {
+                if (_resolved) return;
+                _resolved = true;
+                let _done = false;
+                const _r = () => { if (!_done) { _done = true; this._phrasesCacheDirty = true; this._phrasesCache = null; resolve(phraseIdMap); } };
+                try { tx.addEventListener('complete', _r); } catch (e) { _r(); }
+                setTimeout(_r, 300); // 兜底：事务已结束时 oncomplete 不触发
+            };
             
             // 先导入主话术
             if (mainPhrases.length === 0) {
@@ -2265,7 +2304,7 @@ class PhraseDatabase {
                         variantCompletedCount++;
                         if (variantCompletedCount === variantCount) {
                             console.log('✅ 所有变形话术处理完成');
-                            resolve(phraseIdMap);
+                            _finish();
                         }
                         continue;
                     }
@@ -2325,7 +2364,7 @@ class PhraseDatabase {
                         console.error(`❌ 导入变形话术失败:`, phrase.content.substring(0, 30));
                         variantCompletedCount++;
                         if (variantCompletedCount === variantCount) {
-                            resolve(phraseIdMap);
+                            _finish();
                         }
                     };
                 }
@@ -2353,13 +2392,13 @@ class PhraseDatabase {
                                         pendingUpdates--;
                                         if (pendingUpdates === 0) {
                                             console.log('✅ title_id 映射修正完成');
-                                            resolve(phraseIdMap);
+                                            _finish();
                                         }
                                     };
                                     putReq.onerror = () => {
                                         console.warn('⚠️ 更新 title_id 时出错，继续完成导入');
                                         pendingUpdates--;
-                                        if (pendingUpdates === 0) resolve(phraseIdMap);
+                                        if (pendingUpdates === 0) _finish();
                                     };
                                 }
                             }
@@ -2368,22 +2407,22 @@ class PhraseDatabase {
                         // 如果没有需要更新的条目，直接 resolve
                         if (pendingUpdates === 0) {
                             console.log('ℹ️ 无需修正 title_id');
-                            resolve(phraseIdMap);
+                            _finish();
                         }
                     };
                     getAllReq.onerror = () => {
                         console.warn('⚠️ 读取所有话术以修正 title_id 失败，跳过修正');
-                        resolve(phraseIdMap);
+                        _finish();
                     };
                 } catch (e) {
                     console.error('⚠️ finalizeImport 异常，跳过 title_id 修正:', e);
-                    resolve(phraseIdMap);
+                    _finish();
                 }
             }
             
             // 如果没有话术，直接resolve
             if (totalCount === 0) {
-                resolve(phraseIdMap);
+                _finish();
             }
         });
     }
