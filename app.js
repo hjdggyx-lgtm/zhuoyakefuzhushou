@@ -11300,7 +11300,9 @@ async function importPhrases() {
                         title_text: phrase.title_text || null,
                         title_id: phrase.title_id === undefined ? null : phrase.title_id,
                         is_collapsed: phrase.is_collapsed === true,
-                        show_text_editor: phrase.show_text_editor === true
+                        show_text_editor: phrase.show_text_editor === true,
+                        // 🆕 排序顺序（保留原顺序）
+                        sort_order: typeof phrase.sort_order === 'number' ? phrase.sort_order : null
                     });
                 }
                 
@@ -11496,6 +11498,27 @@ async function importPhrases() {
                     }
                 }
                 
+                // 🆕 导入"作为标题"和"标题文本编辑器"标记（localStorage，需映射话术ID）
+                if (isNewFormat && phraseIdMap) {
+                    try {
+                        if (data.act_as_title_ids !== undefined) {
+                            const oldIds = JSON.parse(data.act_as_title_ids || '[]');
+                            const newIds = oldIds.map(oldId => phraseIdMap.get(oldId)).filter(id => id != null);
+                            localStorage.setItem('act_as_title_ids', JSON.stringify(newIds));
+                            console.log(`✅ 作为标题标记导入完成: ${newIds.length} 条`);
+                        }
+                        if (data.act_title_text_editor_ids !== undefined) {
+                            const oldIds = JSON.parse(data.act_title_text_editor_ids || '[]');
+                            const newIds = oldIds.map(oldId => phraseIdMap.get(oldId)).filter(id => id != null);
+                            localStorage.setItem('act_title_text_editor_ids', JSON.stringify(newIds));
+                            console.log(`✅ 标题文本编辑器标记导入完成: ${newIds.length} 条`);
+                        }
+                    } catch (error) {
+                        console.error('⚠️ 作为标题标记导入失败:', error);
+                        // 不中断导入流程，继续执行
+                    }
+                }
+                
                 // 🔄 导入变形话术数据（如果有）
                 if (isNewFormat && data.variants_data && phraseIdMap) {
                     try {
@@ -11621,6 +11644,9 @@ async function exportPhrases() {
         // 🆕 导出搜索框字幕设置（localStorage）
         const searchMarqueeTexts = localStorage.getItem('searchMarqueeTexts') || '';
         const searchMarqueeEnabled = localStorage.getItem('searchMarqueeEnabled');
+        // 🆕 导出"作为标题"和"标题文本编辑器"标记（localStorage，话术ID列表）
+        const actAsTitleIds = localStorage.getItem('act_as_title_ids') || '[]';
+        const actTitleTextEditorIds = localStorage.getItem('act_title_text_editor_ids') || '[]';
         
         // 🔄 导出变形话术（从localStorage中读取）
         const variantsData = {};
@@ -11698,7 +11724,9 @@ async function exportPhrases() {
                 title_text: phrase.title_text || null,
                 title_id: phrase.title_id === undefined ? null : phrase.title_id,
                 is_collapsed: phrase.is_collapsed === true,
-                show_text_editor: phrase.show_text_editor === true
+                show_text_editor: phrase.show_text_editor === true,
+                // 🆕 排序顺序（保留原顺序，避免导入后标题/卡片位置偏移）
+                sort_order: typeof phrase.sort_order === 'number' ? phrase.sort_order : null
             })),
             // 🆕 文本编辑器内容（按分类ID存储）
             editor_contents: editorContents,
@@ -11710,6 +11738,9 @@ async function exportPhrases() {
             // 🆕 搜索框字幕设置（localStorage）
             search_marquee_texts: searchMarqueeTexts,
             search_marquee_enabled: searchMarqueeEnabled,
+            // 🆕 作为标题/标题文本编辑器标记（localStorage，话术ID列表）
+            act_as_title_ids: actAsTitleIds,
+            act_title_text_editor_ids: actTitleTextEditorIds,
             // 🔄 变形话术数据（按父话术ID存储）
             variants_data: variantsData
         };

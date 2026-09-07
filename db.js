@@ -2226,7 +2226,7 @@ class PhraseDatabase {
                         category_id: phrase.category_id || 0,  // 默认为0（孤儿数据），会显示为"未分类"
                         tags: phrase.tags || '',
                         use_count: phrase.use_count || 0,
-                        sort_order: ++maxSortOrder,  // 递增排序
+                        sort_order: (typeof phrase.sort_order === 'number') ? phrase.sort_order : (++maxSortOrder),  // 优先保留原排序，否则递增
                         created_time: phrase.created_time || new Date().toISOString(),
                         last_used: phrase.last_used || null,
                         // 🖼️ 图片相关字段
