@@ -4981,12 +4981,13 @@ class DesktopApp(QMainWindow):
     
     def _show_main_window(self) -> None:
         """显示主窗口"""
-        self.show()
+        self.showNormal()
         self.activateWindow()
         self.raise_()
     
     def _quit_app(self) -> None:
         """退出应用"""
+        self._force_quit = True
         if self._system_tray:
             self._system_tray.hide()
         QApplication.quit()
@@ -8713,6 +8714,35 @@ class DesktopApp(QMainWindow):
                 self.profile = None
 
     def closeEvent(self, event) -> None:
+        # 🆕 关闭确认拦截
+        close_confirm_file = self.config_dir / "close_confirm.json"
+        skip_confirm = getattr(self, '_force_quit', False)
+        if not skip_confirm:
+            try:
+                if close_confirm_file.exists():
+                    skip_confirm = json.loads(close_confirm_file.read_text(encoding='utf-8')).get('skip', False)
+            except Exception:
+                skip_confirm = False
+        if not skip_confirm:
+            msg = QMessageBox(self)
+            msg.setIcon(QMessageBox.Icon.Warning)
+            msg.setWindowTitle("关闭确认")
+            msg.setText("确定要关闭话术助手吗？")
+            msg.setInformativeText("关闭后将退出程序。如需后台运行，请最小化窗口。")
+            checkbox = QCheckBox("下次不再提醒")
+            msg.setCheckBox(checkbox)
+            btn_yes = msg.addButton("确认关闭", QMessageBox.ButtonRole.AcceptRole)
+            btn_no = msg.addButton("取消", QMessageBox.ButtonRole.RejectRole)
+            msg.setDefaultButton(btn_no)
+            msg.exec()
+            if msg.clickedButton() == btn_no:
+                event.ignore()
+                return
+            if checkbox.isChecked():
+                try:
+                    close_confirm_file.write_text(json.dumps({"skip": True}), encoding='utf-8')
+                except Exception:
+                    pass
         try:
             if self._alias_sync_timer is not None:
                 self._alias_sync_timer.stop()
